@@ -3,10 +3,10 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Search, MapPin, ArrowRight, ArrowLeft } from "lucide-react";
+import { Search, MapPin, ArrowRight } from "lucide-react";
+import { Navbar } from "@/components/ui/navbar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { BottomNav } from "@/components/ui/bottom-nav";
 
 export default function TrackSearchPage() {
   const router = useRouter();
@@ -20,63 +20,50 @@ export default function TrackSearchPage() {
   };
 
   return (
-    <main className="min-h-screen bg-paper pb-32">
-      <div className="px-5 pt-4 pb-2 max-w-md mx-auto flex items-center justify-between">
-        <Link
-          href="/"
-          className="w-9 h-9 rounded-full bg-white border border-line flex items-center justify-center text-ink shadow-subtle hover:bg-soft"
-        >
-          <ArrowLeft className="w-4 h-4" />
-        </Link>
-        <div className="text-center">
-          <div className="text-xs font-bold text-ink">oura</div>
-          <div className="text-[11px] text-muted">Track Live Parcel</div>
-        </div>
-        <div className="w-9" />
-      </div>
+    <div className="min-h-screen bg-paper flex flex-col">
+      <Navbar />
 
-      <div className="max-w-md mx-auto px-5 pt-6 space-y-5">
-        <Card className="space-y-4">
-          <div className="text-center space-y-1">
-            <div className="w-12 h-12 rounded-full bg-accent/10 text-accent flex items-center justify-center mx-auto">
-              <MapPin className="w-6 h-6" />
-            </div>
-            <h1 className="text-base font-bold text-ink">Enter Tracking ID</h1>
-            <p className="text-xs text-muted">
-              Find your package's live location along the Accra-Kumasi highway.
+      <main className="flex-1 max-w-xl w-full mx-auto px-4 py-12 flex flex-col justify-center">
+        <Card className="p-8 space-y-6 bg-white border border-line shadow-card text-center">
+          <div className="w-14 h-14 rounded-full bg-accent/10 text-accent flex items-center justify-center mx-auto">
+            <MapPin className="w-7 h-7" />
+          </div>
+
+          <div className="space-y-1">
+            <h1 className="text-xl font-extrabold text-ink tracking-tight">Track Your Delivery</h1>
+            <p className="text-xs text-muted max-w-sm mx-auto">
+              Monitor your package's live location and status along the Accra-Kumasi VIP highway corridor.
             </p>
           </div>
 
-          <form onSubmit={handleSearch} className="space-y-3 pt-2">
+          <form onSubmit={handleSearch} className="space-y-4 pt-2">
             <div className="relative">
-              <Search className="absolute left-3.5 top-3.5 w-4 h-4 text-muted pointer-events-none" />
+              <Search className="absolute left-4 top-3.5 w-4 h-4 text-muted pointer-events-none" />
               <input
                 type="text"
                 value={searchId}
                 onChange={(e) => setSearchId(e.target.value)}
-                placeholder="e.g. H314315796"
-                className="w-full pl-10 pr-4 py-3 bg-soft border border-line rounded-card text-sm font-data font-bold tracking-wider text-ink focus:outline-none focus:border-accent uppercase"
+                placeholder="Enter Tracking ID (e.g. H314315796)"
+                className="w-full pl-11 pr-4 py-3.5 bg-soft border border-line rounded-card text-sm font-data font-bold tracking-wider text-ink focus:outline-none focus:border-accent uppercase text-center"
               />
             </div>
 
-            <Button type="submit" className="w-full">
-              Track Parcel <ArrowRight className="w-4 h-4 ml-1.5" />
+            <Button type="submit" size="lg" className="w-full shadow-md">
+              Track Live Parcel <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           </form>
 
-          <div className="pt-3 border-t border-line text-center">
-            <span className="text-[11px] text-muted">Try sample tracking ID: </span>
+          <div className="pt-4 border-t border-line text-xs text-muted">
+            <span>Sample live shipment ID: </span>
             <button
               onClick={() => router.push("/track/H314315796")}
-              className="text-xs font-bold text-accent font-data hover:underline"
+              className="font-bold text-accent font-data hover:underline"
             >
               H314315796
             </button>
           </div>
         </Card>
-      </div>
-
-      <BottomNav />
-    </main>
+      </main>
+    </div>
   );
 }

@@ -13,11 +13,15 @@ import {
   ExternalLink,
   Navigation,
   Lock,
+  ArrowRight,
+  Shield,
+  Phone,
+  Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { BottomNav } from "@/components/ui/bottom-nav";
+import { StatusStepper } from "@/components/ui/status-stepper";
 import { Shipment, TerminalRep } from "@/types";
 
 export default function RepDashboardPage() {
@@ -28,22 +32,20 @@ export default function RepDashboardPage() {
   const [authLoading, setAuthLoading] = useState(false);
 
   const [shipments, setShipments] = useState<Shipment[]>([]);
+  const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null);
   const [filter, setFilter] = useState<"all" | "pickup" | "transit" | "arrived">("all");
-  const [activeShipmentId, setActiveShipmentId] = useState<string | null>(null);
-
-  // Quick action state
-  const [trackerInput, setTrackerInput] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [updating, setUpdating] = useState(false);
 
   // New parcel quick logging modal
   const [showLogModal, setShowLogModal] = useState(false);
   const [logDesc, setLogDesc] = useState("");
   const [logSender, setLogSender] = useState("");
+  const [logSenderPhone, setLogSenderPhone] = useState("");
   const [logRecipient, setLogRecipient] = useState("");
   const [logRecipientPhone, setLogRecipientPhone] = useState("");
   const [logDestCity, setLogDestCity] = useState("Kumasi");
 
-  // Check stored auth
   useEffect(() => {
     const saved = localStorage.getItem("oura_rep_session");
     if (saved) {
@@ -57,7 +59,15 @@ export default function RepDashboardPage() {
     fetch("/api/shipments")
       .then((res) => res.json())
       .then((data) => {
-        if (data.shipments) setShipments(data.shipments);
+        if (data.shipments) {
+          setShipments(data.shipments);
+          if (!selectedShipment && data.shipments.length > 0) {
+            setSelectedShipment(data.shipments[0]);
+          } else if (selectedShipment) {
+            const updated = data.shipments.find((s: Shipment) => s.id === selectedShipment.id);
+            if (updated) setSelectedShipment(updated);
+          }
+        }
       })
       .catch((err) => console.error(err));
   };
@@ -142,9 +152,9 @@ export default function RepDashboardPage() {
           quantity: 1,
           weight_category: "medium",
           weight_kg: 3.0,
-          sender_name: logSender || "Walk-in Customer",
-          sender_phone: "0240000000",
-          recipient_name: logRecipient || "Receiver",
+          sender_name: logSender || "Walk-in Client",
+          sender_phone: logSenderPhone || "0240000000",
+          recipient_name: logRecipient || "Recipient",
           recipient_phone: logRecipientPhone || "0240000000",
         }),
       });
@@ -163,29 +173,31 @@ export default function RepDashboardPage() {
     }
   };
 
-  // LOGIN SCREEN
+  // ── 1. LOGIN SCREEN ─────────────────────────────────────────────────────────
   if (!rep) {
     return (
-      <main className="min-h-screen bg-paper flex flex-col justify-center px-5 pb-24">
-        <div className="max-w-sm mx-auto w-full space-y-5">
-          <div className="text-center space-y-1">
-            <div className="w-12 h-12 rounded-2xl bg-ink text-white flex items-center justify-center mx-auto shadow-md">
-              <Package className="w-6 h-6 text-accent" />
-            </div>
-            <h1 className="text-lg font-bold text-ink">oura Terminal Rep</h1>
-            <p className="text-xs text-muted">Accra VIP Circle & Kumasi VIP Asafo Stations</p>
+      <main className="min-h-screen bg-paper flex flex-col justify-center px-4 sm:px-6">
+        <div className="max-w-md mx-auto w-full space-y-6">
+          <div className="text-center space-y-2">
+            <img
+              src="/icon-192.png"
+              alt="oura"
+              className="w-14 h-14 rounded-2xl mx-auto shadow-md border border-line"
+            />
+            <h1 className="text-xl font-extrabold text-ink tracking-tight">oura terminal rep portal</h1>
+            <p className="text-xs text-muted">Accra VIP Circle & Kumasi VIP Asafo Station Desks</p>
           </div>
 
-          <Card>
-            <form onSubmit={handleLogin} className="space-y-3.5">
+          <Card className="p-6 bg-white border border-line shadow-card">
+            <form onSubmit={handleLogin} className="space-y-4">
               <div>
                 <label className="text-xs font-semibold text-ink">Rep Phone Number</label>
                 <input
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  placeholder="0240000001 (Kweku) or 0240000002"
-                  className="w-full px-3.5 py-3 rounded-card border border-line bg-soft text-xs text-ink focus:outline-none focus:border-accent font-data"
+                  placeholder="0240000001 (Kweku) or 0240000002 (Ama)"
+                  className="w-full px-4 py-3 rounded-card border border-line bg-soft text-xs text-ink focus:outline-none focus:border-accent font-data"
                   required
                 />
               </div>
@@ -198,54 +210,85 @@ export default function RepDashboardPage() {
                   onChange={(e) => setPin(e.target.value)}
                   placeholder="Default PIN: 1234"
                   maxLength={6}
-                  className="w-full px-3.5 py-3 rounded-card border border-line bg-soft text-xs text-ink focus:outline-none focus:border-accent font-data"
+                  className="w-full px-4 py-3 rounded-card border border-line bg-soft text-xs text-ink focus:outline-none focus:border-accent font-data"
                   required
                 />
               </div>
 
               {authError && (
-                <div className="p-2.5 rounded-lg bg-status-red-bg text-status-red text-xs">
+                <div className="p-3 rounded-lg bg-status-red-bg text-status-red text-xs">
                   {authError}
                 </div>
               )}
 
-              <Button type="submit" disabled={authLoading} className="w-full mt-2">
+              <Button type="submit" disabled={authLoading} size="lg" className="w-full">
                 {authLoading ? "Verifying PIN..." : "Sign In to Terminal"}
               </Button>
             </form>
           </Card>
+
+          <div className="text-center">
+            <Link href="/" className="text-xs text-muted hover:text-ink font-semibold">
+              ← Return to Client Booking App
+            </Link>
+          </div>
         </div>
-        <BottomNav />
       </main>
     );
   }
 
-  const filteredShipments = shipments.filter((s) => {
-    if (filter === "pickup") return s.status === "paid" || s.status === "pickup_scheduled";
-    if (filter === "transit") return s.status === "at_terminal" || s.status === "in_transit";
-    if (filter === "arrived") return s.status === "arrived" || s.status === "delivered";
-    return true;
-  });
+  // ── 2. DEDICATED REP PORTAL WORKSPACE (Responsive across Desktop, Tablet & Mobile)
+  const filteredShipments = shipments
+    .filter((s) => {
+      if (filter === "pickup") return s.status === "paid" || s.status === "pickup_scheduled";
+      if (filter === "transit") return s.status === "at_terminal" || s.status === "in_transit";
+      if (filter === "arrived") return s.status === "arrived" || s.status === "delivered";
+      return true;
+    })
+    .filter((s) => {
+      if (!searchQuery.trim()) return true;
+      const q = searchQuery.toLowerCase();
+      return (
+        s.tracking_id.toLowerCase().includes(q) ||
+        s.sender_name.toLowerCase().includes(q) ||
+        s.item_description.toLowerCase().includes(q)
+      );
+    });
 
   return (
-    <main className="min-h-screen bg-paper pb-32">
-      {/* Rep Top Bar */}
-      <header className="px-5 pt-4 pb-3 max-w-md mx-auto flex items-center justify-between border-b border-line/60 bg-white shadow-subtle">
-        <div className="flex items-center gap-2.5">
-          <img
-            src="/icon-192.png"
-            alt="oura"
-            className="w-9 h-9 rounded-xl object-cover shadow-sm border border-line"
-          />
+    <div className="min-h-screen bg-paper flex flex-col">
+      {/* Top Station Header */}
+      <header className="sticky top-0 z-40 bg-white border-b border-line/70 px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Link href="/">
+            <img
+              src="/icon-192.png"
+              alt="oura"
+              className="w-9 h-9 rounded-xl object-cover shadow-sm border border-line"
+            />
+          </Link>
           <div>
-            <div className="text-xs font-bold text-ink leading-tight">{rep.name}</div>
-            <div className="text-[10px] text-muted truncate max-w-[170px]">
-              {rep.terminal_name}
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-extrabold text-ink">oura</span>
+              <span className="text-[10px] bg-ink text-white font-bold px-2 py-0.5 rounded-pill">
+                Rep Workstation
+              </span>
+            </div>
+            <div className="text-[11px] text-muted truncate">
+              {rep.name} • <strong className="text-ink">{rep.terminal_name}</strong>
             </div>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            onClick={() => setShowLogModal(true)}
+            className="flex items-center gap-1.5"
+          >
+            <Plus className="w-4 h-4" />
+            <span className="hidden sm:inline">Log Parcel</span>
+          </Button>
           <button
             onClick={loadShipments}
             className="p-2 rounded-full border border-line text-muted hover:text-ink"
@@ -263,217 +306,276 @@ export default function RepDashboardPage() {
         </div>
       </header>
 
-      <div className="max-w-md mx-auto px-5 pt-4 space-y-4">
-        {/* Terminal Action Banner */}
-        <div className="flex items-center justify-between p-3.5 bg-ink text-white rounded-card shadow-subtle">
-          <div>
-            <div className="text-[10px] uppercase font-bold text-accent tracking-wider">Station Dispatch</div>
-            <div className="text-xs font-semibold text-white/90">Log walk-in or assign VIP bus driver</div>
-          </div>
-          <Button
-            size="sm"
-            onClick={() => setShowLogModal(true)}
-            className="flex items-center gap-1 text-xs"
-          >
-            <Plus className="w-3.5 h-3.5" /> Log Parcel
-          </Button>
-        </div>
+      {/* Main Responsive Grid: 2 Columns on Desktop & iPad, 1 Column on Phone */}
+      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+        <div className="grid lg:grid-cols-12 gap-6 items-start">
+          {/* LEFT COLUMN: Queue & Filterable Shipments List (5 cols on Desktop) */}
+          <div className="lg:col-span-5 space-y-4">
+            {/* Search & Filter Bar */}
+            <div className="space-y-2.5">
+              <div className="relative">
+                <Search className="absolute left-3.5 top-3 w-4 h-4 text-muted pointer-events-none" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Filter queue by ID or client..."
+                  className="w-full pl-10 pr-4 py-2.5 bg-white border border-line rounded-card text-xs text-ink placeholder:text-muted focus:outline-none focus:border-accent font-data shadow-subtle"
+                />
+              </div>
 
-        {/* Filter Tabs */}
-        <div className="flex bg-soft p-1 rounded-card text-xs font-medium border border-line/60">
-          {[
-            { id: "all", label: `All (${shipments.length})` },
-            { id: "pickup", label: "Pickup" },
-            { id: "transit", label: "In Transit" },
-            { id: "arrived", label: "Arrived" },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setFilter(tab.id as any)}
-              className={`flex-1 py-1.5 rounded-lg text-center transition-all ${
-                filter === tab.id ? "bg-white text-ink shadow-sm font-bold" : "text-muted hover:text-ink"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Shipments List */}
-        <div className="space-y-3">
-          {filteredShipments.length === 0 ? (
-            <div className="text-center py-8 text-xs text-muted">No parcels in this status.</div>
-          ) : (
-            filteredShipments.map((s) => {
-              const isExpanded = activeShipmentId === s.id;
-              return (
-                <Card key={s.id} className="p-4 space-y-3">
-                  <div
-                    className="flex items-start justify-between cursor-pointer"
-                    onClick={() => setActiveShipmentId(isExpanded ? null : s.id)}
+              {/* Status Tabs */}
+              <div className="flex bg-white p-1 rounded-card text-xs font-semibold border border-line shadow-subtle">
+                {[
+                  { id: "all", label: `All (${shipments.length})` },
+                  { id: "pickup", label: "Pickup" },
+                  { id: "transit", label: "Transit" },
+                  { id: "arrived", label: "Arrived" },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setFilter(tab.id as any)}
+                    className={`flex-1 py-1.5 rounded-lg text-center transition-all ${
+                      filter === tab.id
+                        ? "bg-ink text-white shadow-sm font-bold"
+                        : "text-muted hover:text-ink"
+                    }`}
                   >
-                    <div>
-                      <div className="text-xs font-extrabold font-data text-ink">
-                        {s.tracking_id}
-                      </div>
-                      <div className="text-[11px] font-semibold text-ink/80 mt-0.5">
-                        {s.item_description}
-                      </div>
-                      <div className="text-[10px] text-muted mt-0.5">
-                        {s.origin_city} ➔ {s.destination_city} • {s.sender_name}
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* List of Shipments */}
+            <div className="space-y-2.5 max-h-[calc(100vh-250px)] overflow-y-auto pr-1">
+              {filteredShipments.length === 0 ? (
+                <Card className="p-8 text-center text-xs text-muted">
+                  No shipments matching current filter.
+                </Card>
+              ) : (
+                filteredShipments.map((s) => {
+                  const isSelected = selectedShipment?.id === s.id;
+                  return (
+                    <div
+                      key={s.id}
+                      onClick={() => setSelectedShipment(s)}
+                      className={`p-4 rounded-card border transition-all cursor-pointer ${
+                        isSelected
+                          ? "bg-white border-accent shadow-card ring-1 ring-accent"
+                          : "bg-white border-line hover:border-ink/20 shadow-subtle"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div className="text-xs font-extrabold font-data text-ink">
+                            {s.tracking_id}
+                          </div>
+                          <div className="text-xs font-semibold text-ink mt-0.5">
+                            {s.item_description} ({s.weight_kg}kg)
+                          </div>
+                          <div className="text-[11px] text-muted mt-0.5">
+                            {s.origin_city} ➔ {s.destination_city} • {s.sender_name}
+                          </div>
+                        </div>
+                        <Badge status={s.status} />
                       </div>
                     </div>
-                    <Badge status={s.status} />
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* RIGHT COLUMN: Active Selected Shipment Workspace (7 cols on Desktop) */}
+          <div className="lg:col-span-7">
+            {selectedShipment ? (
+              <Card className="p-6 bg-white border border-line shadow-card space-y-6">
+                {/* Header Row */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-line/60 gap-2">
+                  <div>
+                    <div className="text-[10px] uppercase font-bold text-muted">Active Shipment Action Desk</div>
+                    <div className="text-lg font-extrabold font-data text-ink tracking-tight flex items-center gap-2 mt-0.5">
+                      <span>{selectedShipment.tracking_id}</span>
+                      <Badge status={selectedShipment.status} />
+                    </div>
                   </div>
 
-                  {/* Expanded Actions Panel for Rep */}
-                  {isExpanded && (
-                    <div className="pt-3 border-t border-line/60 space-y-3">
-                      {/* Uber / Manual Pickup Section */}
-                      {(s.status === "pending_payment" || s.status === "paid") && (
-                        <div className="p-3 bg-soft rounded-lg space-y-2">
-                          <div className="text-[11px] font-bold text-ink flex items-center justify-between">
-                            <span>Pickup Orchestration</span>
-                            <span className="text-[10px] text-muted font-normal">
-                              Address: {s.origin_address}
-                            </span>
-                          </div>
-                          <div className="grid grid-cols-2 gap-2">
-                            <a
-                              href={`https://m.uber.com/ul/?action=setPickup&pickup=my_location&dropoff[formatted_address]=${encodeURIComponent(
-                                s.origin_address
-                              )}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="px-3 py-2 bg-black text-white text-center rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1"
-                            >
-                              <Truck className="w-3.5 h-3.5" /> Order Uber
-                            </a>
+                  <Link
+                    href={`/track/${selectedShipment.tracking_id}`}
+                    target="_blank"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-pill border border-line text-xs font-semibold text-ink hover:bg-soft shadow-subtle"
+                  >
+                    <span>Customer Tracking Link</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
 
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() =>
-                                handleUpdateStatus(s.tracking_id, "picked_up", {
-                                  courier_name: "Ernest Angmler (Car Pickup)",
-                                })
-                              }
-                            >
-                              Ernest Pickup
-                            </Button>
-                          </div>
-                        </div>
-                      )}
+                {/* Status Stepper */}
+                <div className="p-4 rounded-card bg-soft">
+                  <div className="text-[11px] font-bold text-ink mb-1">Route Progress:</div>
+                  <StatusStepper status={selectedShipment.status} showEta={true} />
+                </div>
 
-                      {/* Status Transition Buttons */}
-                      <div className="space-y-2">
-                        <div className="text-[11px] font-bold text-ink">Status Transition:</div>
-                        <div className="grid grid-cols-2 gap-2">
-                          <Button
-                            size="sm"
-                            variant={s.status === "at_terminal" ? "secondary" : "outline"}
-                            onClick={() => handleUpdateStatus(s.tracking_id, "at_terminal")}
-                          >
-                            Received at VIP
-                          </Button>
+                {/* Status Transition Action Buttons */}
+                <div className="space-y-3">
+                  <h3 className="text-xs font-bold text-ink uppercase tracking-wider">
+                    Update Station Status
+                  </h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <Button
+                      size="sm"
+                      variant={selectedShipment.status === "at_terminal" ? "secondary" : "outline"}
+                      onClick={() => handleUpdateStatus(selectedShipment.tracking_id, "at_terminal")}
+                    >
+                      1. At VIP Station
+                    </Button>
 
-                          <Button
-                            size="sm"
-                            variant={s.status === "in_transit" ? "secondary" : "outline"}
-                            onClick={() =>
-                              handleUpdateStatus(s.tracking_id, "in_transit", {
-                                tracker_id: s.tracker_id || "TRK-FINDMY-01",
-                              })
-                            }
-                          >
-                            Put On Bus (In Transit)
-                          </Button>
+                    <Button
+                      size="sm"
+                      variant={selectedShipment.status === "in_transit" ? "secondary" : "outline"}
+                      onClick={() =>
+                        handleUpdateStatus(selectedShipment.tracking_id, "in_transit", {
+                          tracker_id: selectedShipment.tracker_id || "TRK-FINDMY-09",
+                        })
+                      }
+                    >
+                      2. Put On Bus
+                    </Button>
 
-                          <Button
-                            size="sm"
-                            variant={s.status === "arrived" ? "secondary" : "outline"}
-                            onClick={() => handleUpdateStatus(s.tracking_id, "arrived")}
-                          >
-                            Arrived at Terminal
-                          </Button>
+                    <Button
+                      size="sm"
+                      variant={selectedShipment.status === "arrived" ? "secondary" : "outline"}
+                      onClick={() => handleUpdateStatus(selectedShipment.tracking_id, "arrived")}
+                    >
+                      3. Arrived Hub
+                    </Button>
 
-                          <Button
-                            size="sm"
-                            variant={s.status === "delivered" ? "primary" : "outline"}
-                            onClick={() => handleUpdateStatus(s.tracking_id, "delivered")}
-                          >
-                            Mark Delivered ✓
-                          </Button>
-                        </div>
-                      </div>
+                    <Button
+                      size="sm"
+                      variant={selectedShipment.status === "delivered" ? "primary" : "outline"}
+                      onClick={() => handleUpdateStatus(selectedShipment.tracking_id, "delivered")}
+                    >
+                      4. Delivered ✓
+                    </Button>
+                  </div>
+                </div>
 
-                      {/* Tracker Device ID Assignment */}
-                      <div className="pt-2 border-t border-line/60 flex items-center gap-2">
-                        <input
-                          type="text"
-                          defaultValue={s.tracker_id || ""}
-                          placeholder="Assign Tracker / Find My Tag"
-                          id={`tracker-${s.id}`}
-                          className="flex-1 px-3 py-1.5 bg-soft rounded-lg text-xs font-data border border-line focus:outline-none"
-                        />
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={() => {
-                            const val = (
-                              document.getElementById(`tracker-${s.id}`) as HTMLInputElement
-                            )?.value;
-                            if (val) {
-                              handleUpdateStatus(s.tracking_id, s.status, { tracker_id: val });
-                              alert(`Tracker ${val} linked to shipment!`);
-                            }
-                          }}
-                        >
-                          Link Tag
-                        </Button>
-                      </div>
+                {/* Hardware Tracker Tag Assignment */}
+                <div className="p-4 rounded-card border border-line bg-soft/50 space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-ink">Physical GPS Tracker / Find My Tag</span>
+                    <span className="text-[10px] text-muted">
+                      Current: <strong>{selectedShipment.tracker_id || "None Assigned"}</strong>
+                    </span>
+                  </div>
 
-                      {/* Link to live public tracking */}
-                      <div className="text-right">
-                        <Link
-                          href={`/track/${s.tracking_id}`}
-                          target="_blank"
-                          className="text-[11px] text-accent font-semibold hover:underline inline-flex items-center gap-1"
-                        >
-                          View Public Tracking Screen <ExternalLink className="w-3 h-3" />
-                        </Link>
-                      </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      defaultValue={selectedShipment.tracker_id || ""}
+                      placeholder="e.g. TRK-FINDMY-09 or Concox IMEI"
+                      id={`tracker-tag-${selectedShipment.id}`}
+                      className="flex-1 px-3 py-2 bg-white rounded-lg text-xs font-data border border-line focus:outline-none focus:border-accent"
+                    />
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        const input = document.getElementById(
+                          `tracker-tag-${selectedShipment.id}`
+                        ) as HTMLInputElement;
+                        if (input?.value) {
+                          handleUpdateStatus(selectedShipment.tracking_id, selectedShipment.status, {
+                            tracker_id: input.value,
+                          });
+                          alert(`Tracker ${input.value} linked to ${selectedShipment.tracking_id}!`);
+                        }
+                      }}
+                    >
+                      Link Hardware
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Pickup Orchestration: Uber / Ernest */}
+                <div className="p-4 rounded-card bg-ink text-white space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs font-bold text-accent">Pickup Orchestration</div>
+                    <div className="text-[11px] text-white/60">
+                      Address: {selectedShipment.origin_address}
                     </div>
-                  )}
-                </Card>
-              );
-            })
-          )}
-        </div>
-      </div>
+                  </div>
 
-      {/* Quick Parcel Log Modal */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <a
+                      href={`https://m.uber.com/ul/?action=setPickup&pickup=my_location&dropoff[formatted_address]=${encodeURIComponent(
+                        selectedShipment.origin_address
+                      )}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2.5 bg-white text-ink rounded-pill text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-white/90"
+                    >
+                      <Truck className="w-4 h-4" /> Order Uber Pickup
+                    </a>
+
+                    <button
+                      onClick={() =>
+                        handleUpdateStatus(selectedShipment.tracking_id, "picked_up", {
+                          courier_name: "Ernest Angmler (Car Pickup)",
+                        })
+                      }
+                      className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-pill text-xs font-bold border border-white/20"
+                    >
+                      Mark: Ernest Pickup
+                    </button>
+                  </div>
+                </div>
+
+                {/* Client Contact Info */}
+                <div className="grid sm:grid-cols-2 gap-3 text-xs pt-2">
+                  <div className="p-3 rounded-lg border border-line bg-soft">
+                    <div className="text-[10px] uppercase font-bold text-muted">Sender Details</div>
+                    <div className="font-semibold text-ink mt-0.5">{selectedShipment.sender_name}</div>
+                    <div className="text-muted font-data">{selectedShipment.sender_phone}</div>
+                  </div>
+                  <div className="p-3 rounded-lg border border-line bg-soft">
+                    <div className="text-[10px] uppercase font-bold text-muted">Recipient Details</div>
+                    <div className="font-semibold text-ink mt-0.5">{selectedShipment.recipient_name}</div>
+                    <div className="text-muted font-data">{selectedShipment.recipient_phone}</div>
+                  </div>
+                </div>
+              </Card>
+            ) : (
+              <Card className="p-12 text-center text-xs text-muted">
+                Select a shipment from the left queue to view details and action buttons.
+              </Card>
+            )}
+          </div>
+        </div>
+      </main>
+
+      {/* Log Parcel Modal */}
       {showLogModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <Card className="max-w-sm w-full space-y-4">
-            <h2 className="text-sm font-bold text-ink">Log Walk-In Parcel</h2>
+          <Card className="max-w-md w-full space-y-4 p-6 bg-white shadow-2xl">
+            <h2 className="text-base font-bold text-ink">Log Walk-In Parcel</h2>
 
-            <form onSubmit={handleLogParcel} className="space-y-3">
+            <form onSubmit={handleLogParcel} className="space-y-3.5">
               <div>
-                <label className="text-[11px] font-semibold text-ink">Item Description</label>
+                <label className="text-xs font-semibold text-ink">Item Description</label>
                 <input
                   type="text"
                   value={logDesc}
                   onChange={(e) => setLogDesc(e.target.value)}
-                  placeholder="e.g. Carton of books / shoe box"
-                  className="w-full px-3 py-2 rounded-card border border-line bg-soft text-xs text-ink"
+                  placeholder="e.g. Carton of shoes, laptop box, documents..."
+                  className="w-full px-3.5 py-2.5 rounded-card border border-line bg-soft text-xs text-ink"
                   required
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[11px] font-semibold text-ink">Sender</label>
+                  <label className="text-xs font-semibold text-ink">Sender Name</label>
                   <input
                     type="text"
                     value={logSender}
@@ -483,31 +585,54 @@ export default function RepDashboardPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] font-semibold text-ink">Recipient Phone</label>
+                  <label className="text-xs font-semibold text-ink">Sender Phone</label>
+                  <input
+                    type="tel"
+                    value={logSenderPhone}
+                    onChange={(e) => setLogSenderPhone(e.target.value)}
+                    placeholder="024XXXXXXX"
+                    className="w-full px-3 py-2 rounded-card border border-line bg-soft text-xs text-ink font-data"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-ink">Recipient Name</label>
+                  <input
+                    type="text"
+                    value={logRecipient}
+                    onChange={(e) => setLogRecipient(e.target.value)}
+                    placeholder="Recipient name"
+                    className="w-full px-3 py-2 rounded-card border border-line bg-soft text-xs text-ink"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-ink">Recipient Phone</label>
                   <input
                     type="tel"
                     value={logRecipientPhone}
                     onChange={(e) => setLogRecipientPhone(e.target.value)}
-                    placeholder="024XXXXXXX"
-                    className="w-full px-3 py-2 rounded-card border border-line bg-soft text-xs text-ink"
+                    placeholder="020XXXXXXX"
+                    className="w-full px-3 py-2 rounded-card border border-line bg-soft text-xs text-ink font-data"
                     required
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-[11px] font-semibold text-ink">Destination City</label>
+                <label className="text-xs font-semibold text-ink">Destination City</label>
                 <select
                   value={logDestCity}
                   onChange={(e) => setLogDestCity(e.target.value)}
-                  className="w-full px-3 py-2 rounded-card border border-line bg-soft text-xs text-ink"
+                  className="w-full px-3 py-2.5 rounded-card border border-line bg-soft text-xs text-ink font-semibold"
                 >
-                  <option value="Kumasi">Kumasi (VIP Asafo)</option>
-                  <option value="Accra">Accra (VIP Circle)</option>
+                  <option value="Kumasi">Kumasi (VIP Asafo Station)</option>
+                  <option value="Accra">Accra (VIP Circle Station)</option>
                 </select>
               </div>
 
-              <div className="flex gap-2 pt-2">
+              <div className="flex gap-3 pt-3">
                 <Button
                   type="button"
                   variant="outline"
@@ -517,15 +642,13 @@ export default function RepDashboardPage() {
                   Cancel
                 </Button>
                 <Button type="submit" disabled={updating} className="flex-1">
-                  Create Order
+                  Create Station Order
                 </Button>
               </div>
             </form>
           </Card>
         </div>
       )}
-
-      <BottomNav />
-    </main>
+    </div>
   );
 }
