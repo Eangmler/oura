@@ -1,0 +1,46 @@
+{
+  "name": "oura — intercity delivery",
+  "short_name": "oura",
+  "description": "Intercity parcel delivery between Accra and Kumasi via VIP Express with live hardware tracking.",
+  "start_url": "/",
+  "id": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F6F4F1",
+  "theme_color": "#0F0F0F",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "New Delivery",
+      "short_name": "Book",
+      "url": "/book",
+      "icons": [{ "src": "/icon-192.svg", "sizes": "192x192" }]
+    },
+    {
+      "name": "Track Package",
+      "short_name": "Track",
+      "url": "/track",
+      "icons": [{ "src": "/icon-192.svg", "sizes": "192x192" }]
+    },
+    {
+      "name": "Terminal Rep Console",
+      "short_name": "Rep",
+      "url": "/rep",
+      "icons": [{ "src": "/icon-192.svg", "sizes": "192x192" }]
+    }
+  ]
+}

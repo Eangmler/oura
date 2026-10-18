@@ -1,11 +1,19 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { PwaRegister } from "@/components/ui/pwa-register";
 
 export const metadata: Metadata = {
-  title: "oura",
-  description: "Intercity delivery platform — fast, tracked, reliable.",
+  title: "oura — intercity delivery",
+  description: "Intercity parcel delivery between Accra and Kumasi via VIP Express with live hardware tracking.",
+  manifest: "/manifest.json",
   icons: {
-    icon: "/favicon.ico",
+    icon: "/icon-192.svg",
+    apple: "/icon-192.svg",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "oura",
   },
 };
 
@@ -24,7 +32,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <link rel="apple-touch-icon" href="/icon-192.svg" />
+      </head>
       <body className="font-body bg-paper text-ink min-h-screen">
+        <PwaRegister />
         {children}
       </body>
     </html>

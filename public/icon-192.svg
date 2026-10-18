@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E85D26" />
+      <stop offset="100%" stop-color="#C74A1A" />
+    </linearGradient>
+  </defs>
+  <rect width="192" height="192" rx="42" fill="#0F0F0F"/>
+  <!-- oura minimalist transit emblem -->
+  <circle cx="96" cy="74" r="32" fill="none" stroke="url(#grad)" stroke-width="8" stroke-dasharray="140 30" stroke-linecap="round"/>
+  <circle cx="96" cy="74" r="10" fill="#E85D26"/>
+  <!-- brand name: oura in small letters -->
+  <text x="96" y="146" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-size="34" font-weight="800" fill="#FFFFFF" text-anchor="middle" letter-spacing="-1">oura</text>
+</svg>
