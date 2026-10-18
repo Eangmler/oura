@@ -13,6 +13,7 @@ export const Navbar = () => {
   const isAdmin = pathname.startsWith("/admin");
   const isBook = pathname.startsWith("/book");
   const isTrack = pathname.startsWith("/track");
+  const isWhatsApp = pathname.startsWith("/whatsapp");
 
   return (
     <nav className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-line/70">
@@ -58,6 +59,16 @@ export const Navbar = () => {
           >
             Track Parcel
           </Link>
+          <Link
+            href="/whatsapp"
+            className={`px-4 py-1.5 rounded-pill transition-all flex items-center gap-1.5 ${
+              isWhatsApp
+                ? "bg-[#25D366] text-ink shadow-sm font-extrabold"
+                : "text-status-green hover:text-ink"
+            }`}
+          >
+            <span>💬 WhatsApp Bot</span>
+          </Link>
         </div>
 
         {/* Right Portal Switcher (Clean, distinct 3 apps) */}
@@ -89,6 +100,12 @@ export const Navbar = () => {
 
         {/* Mobile Menu Button */}
         <div className="flex sm:hidden items-center gap-2">
+          <Link
+            href="/whatsapp"
+            className="px-3 py-1.5 bg-[#25D366]/20 text-status-green rounded-pill text-xs font-extrabold"
+          >
+            💬 Bot
+          </Link>
           <Link
             href="/book"
             className="px-3 py-1.5 bg-accent text-white rounded-pill text-xs font-bold"
@@ -129,6 +146,13 @@ export const Navbar = () => {
               className="py-2 text-ink hover:text-accent"
             >
               Track Package
+            </Link>
+            <Link
+              href="/whatsapp"
+              onClick={() => setMobileMenuOpen(false)}
+              className="py-2 text-status-green font-bold hover:text-accent"
+            >
+              💬 WhatsApp Bot & Notifications
             </Link>
           </div>
 

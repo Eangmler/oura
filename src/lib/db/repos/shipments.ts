@@ -1,6 +1,7 @@
 import { Shipment, ShipmentStatus } from "@/types";
 import { getStore } from "../store";
 import { assignTrackerToShipment, releaseTrackerFromShipment } from "./trackers";
+import { sendWhatsAppStatusNotification } from "@/lib/whatsapp/notifier";
 
 export function generateTrackingId(originCity: string, destCity: string): string {
   const originCode = originCity.toLowerCase().includes("acc") ? "ACC" : "KSI";
@@ -118,6 +119,9 @@ export async function updateShipmentStatus(
     await releaseTrackerFromShipment(trackingId);
   }
 
+  // Automatically push WhatsApp notification to client with external live map link
+  await sendWhatsAppStatusNotification(store.shipments[index]);
+
   return store.shipments[index];
 }
 
@@ -136,5 +140,6 @@ export async function confirmShipmentPayment(trackingId: string): Promise<Shipme
   };
 
   store.shipments[index] = updated;
+  await sendWhatsAppStatusNotification(updated);
   return updated;
 }

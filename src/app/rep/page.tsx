@@ -582,83 +582,77 @@ export default function RepDashboardPage() {
                   </div>
                 </div>
 
-                {/* 1-CLICK REGISTERED HARDWARE TAG PICKER (Set Once in Admin, Reuse Forever) */}
+                {/* STRICT ENUM DROPDOWN OF CURRENTLY AVAILABLE HARDWARE TRACKERS */}
                 <div className="p-4 rounded-card border border-line bg-soft/60 space-y-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
                       <div className="text-xs font-bold text-ink flex items-center gap-1.5">
                         <Radio className="w-3.5 h-3.5 text-accent" />
-                        <span>1-Click Hardware Tracker Tag (Registered Once)</span>
+                        <span>Select Available Hardware Tracker (Pre-Registered Enum)</span>
                       </div>
                       <p className="text-[11px] text-muted">
-                        Tap a tag below to clip it onto this bus sack. Automatically unlinks when marked Delivered.
+                        Choose an available tag from the dropdown—no typing required. Automatically frees up when Delivered.
                       </p>
                     </div>
                     <span className="text-[11px] font-data font-bold px-2.5 py-1 rounded-pill bg-white border border-line text-ink">
-                      Attached: {selectedShipment.tracker_id || "None"}
+                      Current: {selectedShipment.tracker_id || "Unassigned"}
                     </span>
                   </div>
 
-                  {/* Pre-registered Hardware Tags Grid */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    {trackers.map((t) => {
-                      const isCurrent = selectedShipment.tracker_id === t.id;
-                      const isBusyOther =
-                        t.status === "in_use" &&
-                        t.assigned_shipment_id &&
-                        t.assigned_shipment_id !== selectedShipment.tracking_id;
-                      return (
-                        <button
-                          key={t.id}
-                          type="button"
-                          onClick={() =>
-                            handleUpdateStatus(
-                              selectedShipment.tracking_id,
-                              selectedShipment.status === "at_terminal" ? "in_transit" : selectedShipment.status,
-                              { tracker_id: t.id }
-                            )
-                          }
-                          className={`p-2.5 rounded-xl border text-left transition-all ${
-                            isCurrent
-                              ? "bg-ink text-white border-ink shadow-sm"
-                              : isBusyOther
-                              ? "bg-white/60 text-muted border-line"
-                              : "bg-white text-ink border-line hover:border-accent"
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="text-[11px] font-extrabold font-data">{t.id}</span>
-                            <span
-                              className={`w-2 h-2 rounded-full ${
-                                isCurrent
-                                  ? "bg-accent"
-                                  : isBusyOther
-                                  ? "bg-status-amber"
-                                  : "bg-status-green"
-                              }`}
-                            />
-                          </div>
-                          <div
-                            className={`text-[10px] truncate mt-0.5 ${
-                              isCurrent ? "text-white/80" : "text-muted"
-                            }`}
-                          >
-                            {t.name}
-                          </div>
-                          <div
-                            className={`text-[9px] font-data mt-1 ${
-                              isCurrent ? "text-accent font-bold" : "text-muted"
-                            }`}
-                          >
+                  {/* Enum Select Dropdown (Only available trackers selectable) */}
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                    <select
+                      id={`tracker-enum-${selectedShipment.id}`}
+                      key={`${selectedShipment.id}-${selectedShipment.tracker_id || "none"}`}
+                      defaultValue={
+                        selectedShipment.tracker_id ||
+                        trackers.find((t) => t.status === "available")?.id ||
+                        "oura-tag-02"
+                      }
+                      className="flex-1 px-3.5 py-2.5 bg-white rounded-card border border-line text-xs font-bold font-data text-ink focus:outline-none focus:border-accent"
+                    >
+                      {trackers.map((t) => {
+                        const isCurrent = selectedShipment.tracker_id === t.id;
+                        const isBusyOther =
+                          t.status === "in_use" &&
+                          Boolean(t.current_shipment_id) &&
+                          t.current_shipment_id !== selectedShipment.tracking_id;
+                        return (
+                          <option key={t.id} value={t.id} disabled={isBusyOther}>
+                            {t.id.toUpperCase()} — {t.name}{" "}
                             {isCurrent
-                              ? "✓ Active Here"
+                              ? "(✓ Assigned to this parcel)"
                               : isBusyOther
-                              ? `On ${t.assigned_shipment_id}`
-                              : "Available"}
-                          </div>
-                        </button>
-                      );
-                    })}
+                              ? `(Busy on #${t.current_shipment_id} — Unavailable)`
+                              : "(🟢 Available at Station)"}
+                          </option>
+                        );
+                      })}
+                    </select>
+
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        const selectEl = document.getElementById(
+                          `tracker-enum-${selectedShipment.id}`
+                        ) as HTMLSelectElement;
+                        if (selectEl?.value) {
+                          handleUpdateStatus(
+                            selectedShipment.tracking_id,
+                            selectedShipment.status === "at_terminal"
+                              ? "in_transit"
+                              : selectedShipment.status,
+                            { tracker_id: selectEl.value }
+                          );
+                          setGpsStatusMsg(
+                            `✓ Assigned ${selectEl.value.toUpperCase()} to #${selectedShipment.tracking_id} & sent WhatsApp alert to client!`
+                          );
+                        }
+                      }}
+                      className="shrink-0"
+                    >
+                      Assign Selected Tag
+                    </Button>
                   </div>
                 </div>
 

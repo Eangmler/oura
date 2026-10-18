@@ -1,4 +1,4 @@
-import { Shipment, TrackerPing, TerminalRep, OuraSettings, HardwareTracker } from "@/types";
+import { Shipment, TrackerPing, TerminalRep, OuraSettings, HardwareTracker, WhatsAppMessageLog } from "@/types";
 
 export const DEFAULT_SETTINGS: OuraSettings = {
   company_name: "oura",
@@ -7,9 +7,10 @@ export const DEFAULT_SETTINGS: OuraSettings = {
   payment_instructions_template:
     "Kindly send GHS {total} via MTN MoMo to {momo_number} ({momo_name}). Use Reference: {tracking_id}. Your parcel will be dispatched as soon as payment is verified.",
   whatsapp_number: "+233248147952",
+  whatsapp_phone_number_id: "",
   whatsapp_token: "",
-  whatsapp_enabled: false,
-  bot_enabled: false,
+  whatsapp_enabled: true,
+  bot_enabled: true,
   pickup_mode: "ernest_manual",
   rates: {
     accra_kumasi: {
@@ -45,6 +46,7 @@ export const INITIAL_TRACKERS: HardwareTracker[] = [
     share_url: "https://www.google.com/android/find/",
     status: "in_use",
     current_shipment_id: "H314315796",
+    battery_pct: 98,
     last_lat: 6.0406,
     last_lng: -0.4508,
     last_speed_kmh: 78,
@@ -57,6 +59,7 @@ export const INITIAL_TRACKERS: HardwareTracker[] = [
     share_url: "https://www.google.com/android/find/",
     status: "available",
     current_shipment_id: null,
+    battery_pct: 100,
     last_lat: 5.5601,
     last_lng: -0.2155,
     last_speed_kmh: 0,
@@ -69,6 +72,7 @@ export const INITIAL_TRACKERS: HardwareTracker[] = [
     share_url: "https://www.google.com/android/find/",
     status: "available",
     current_shipment_id: null,
+    battery_pct: 94,
     last_lat: 6.6885,
     last_lng: -1.6244,
     last_speed_kmh: 0,
@@ -81,6 +85,7 @@ export const INITIAL_TRACKERS: HardwareTracker[] = [
     share_url: "https://www.google.com/android/find/",
     status: "available",
     current_shipment_id: null,
+    battery_pct: 100,
     last_lat: 5.6037,
     last_lng: -0.187,
     last_speed_kmh: 0,
@@ -210,6 +215,25 @@ export const INITIAL_PINGS: TrackerPing[] = [
   },
 ];
 
+export const INITIAL_WHATSAPP_MESSAGES: WhatsAppMessageLog[] = [
+  {
+    id: "wa_init_1",
+    phone: "0241112233",
+    direction: "outbound_notification",
+    tracking_id: "H314315796",
+    text:
+      "🚌 *oura Live Update — Parcel On VIP Bus!*\n" +
+      "──────────────────\n" +
+      "📦 Booking ID: *H314315796* (Mac Mini M4 Pro)\n" +
+      "🏷️ Hardware Tag: *oura-tag-01*\n" +
+      "📍 Route: *Accra (VIP Circle) ➔ Kumasi (VIP Asafo)*\n\n" +
+      "Your parcel is now onboard the VIP coach heading to Kumasi. We will message you on WhatsApp as soon as it arrives at VIP Asafo!\n\n" +
+      "🗺️ *Follow Live Map Anytime:*\nhttps://oura-psi.vercel.app/track/H314315796",
+    timestamp: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
+    delivery_status: "logged_sandbox",
+  },
+];
+
 declare global {
   var __OURA_STORE__: {
     settings: OuraSettings;
@@ -217,6 +241,7 @@ declare global {
     shipments: Shipment[];
     pings: TrackerPing[];
     trackers: HardwareTracker[];
+    whatsapp_messages: WhatsAppMessageLog[];
   } | undefined;
 }
 
@@ -228,10 +253,14 @@ export function getStore() {
       shipments: [...INITIAL_SHIPMENTS],
       pings: [...INITIAL_PINGS],
       trackers: [...INITIAL_TRACKERS],
+      whatsapp_messages: [...INITIAL_WHATSAPP_MESSAGES],
     };
   }
   if (!globalThis.__OURA_STORE__.trackers) {
     globalThis.__OURA_STORE__.trackers = [...INITIAL_TRACKERS];
+  }
+  if (!globalThis.__OURA_STORE__.whatsapp_messages) {
+    globalThis.__OURA_STORE__.whatsapp_messages = [...INITIAL_WHATSAPP_MESSAGES];
   }
   return globalThis.__OURA_STORE__;
 }

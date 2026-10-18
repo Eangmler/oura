@@ -719,7 +719,7 @@ export default function AdminDashboardPage() {
                       }`}
                     >
                       {t.status === "in_use"
-                        ? `ON BUS (${t.assigned_shipment_id || "Assigned"})`
+                        ? `ON BUS (${t.current_shipment_id || "Assigned"})`
                         : "AVAILABLE AT DESK"}
                     </span>
                   </div>
@@ -1147,30 +1147,50 @@ export default function AdminDashboardPage() {
 
             {/* WhatsApp Integration Toggle */}
             <Card className="p-6 bg-white border border-line shadow-card space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <div className="text-sm font-bold text-ink">WhatsApp Cloud Bot Module</div>
+                  <div className="text-sm font-bold text-ink">WhatsApp Cloud Bot & Auto-Notification Module</div>
                   <div className="text-xs text-muted">
-                    When you register your business number, enable bot here
+                    Connect your temporary or permanent SIM card via Meta Cloud API. You can swap numbers anytime here without losing data.
                   </div>
                 </div>
-                <input
-                  type="checkbox"
-                  checked={settings.whatsapp_enabled}
-                  onChange={(e) => setSettings({ ...settings, whatsapp_enabled: e.target.checked })}
-                  className="w-5 h-5 accent-accent"
-                />
+                <div className="flex items-center gap-3">
+                  <Link
+                    href="/whatsapp"
+                    className="px-3 py-1.5 rounded-pill bg-status-green-bg text-status-green text-xs font-bold hover:opacity-90"
+                  >
+                    Open Live WhatsApp Simulator ➔
+                  </Link>
+                  <input
+                    type="checkbox"
+                    checked={settings.whatsapp_enabled}
+                    onChange={(e) => setSettings({ ...settings, whatsapp_enabled: e.target.checked })}
+                    className="w-5 h-5 accent-accent"
+                  />
+                </div>
               </div>
 
               {settings.whatsapp_enabled && (
-                <div className="grid sm:grid-cols-2 gap-4 pt-2">
+                <div className="grid sm:grid-cols-3 gap-4 pt-2">
                   <div>
-                    <label className="text-xs font-semibold text-ink">WhatsApp Bot Number</label>
+                    <label className="text-xs font-semibold text-ink">WhatsApp Business Number (SIM)</label>
                     <input
                       type="text"
                       value={settings.whatsapp_number}
                       onChange={(e) => setSettings({ ...settings, whatsapp_number: e.target.value })}
                       placeholder="+233248147952"
+                      className="w-full px-3.5 py-2.5 rounded-card border border-line bg-soft text-xs text-ink font-data mt-1"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-ink">Meta Phone Number ID</label>
+                    <input
+                      type="text"
+                      value={settings.whatsapp_phone_number_id || ""}
+                      onChange={(e) =>
+                        setSettings({ ...settings, whatsapp_phone_number_id: e.target.value })
+                      }
+                      placeholder="e.g. 104928192839102"
                       className="w-full px-3.5 py-2.5 rounded-card border border-line bg-soft text-xs text-ink font-data mt-1"
                     />
                   </div>

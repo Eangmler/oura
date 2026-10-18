@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { processWhatsAppMessage } from "@/lib/whatsapp/bot";
+import { getStore } from "@/lib/db/store";
 
-// GET for Meta webhook verification
+// GET for Meta webhook verification OR fetching live WhatsApp message logs for the simulator
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const mode = searchParams.get("hub.mode");
@@ -13,15 +14,24 @@ export async function GET(request: Request) {
   if (mode === "subscribe" && token === VERIFY_TOKEN) {
     return new Response(challenge, { status: 200 });
   }
+
+  if (searchParams.get("logs") === "true") {
+    const store = getStore();
+    return NextResponse.json({
+      success: true,
+      messages: store.whatsapp_messages || [],
+    });
+  }
+
   return new Response("Forbidden", { status: 403 });
 }
 
-// POST for incoming user messages
+// POST for incoming user messages (both real Meta Cloud API webhook & Live Simulator)
 export async function POST(request: Request) {
   try {
     const body = await request.json();
 
-    // Parse WhatsApp Cloud API payload format
+    // 1. Parse standard Meta WhatsApp Cloud API payload format
     const entry = body.entry?.[0];
     const changes = entry?.changes?.[0];
     const value = changes?.value;
@@ -32,18 +42,23 @@ export async function POST(request: Request) {
       const text = messageObj.text.body;
 
       const botReply = await processWhatsAppMessage(from, text);
-
-      // In production with token configured, sends HTTP POST to Meta Graph API:
-      // https://graph.facebook.com/v19.0/{PHONE_NUMBER_ID}/messages
-      console.log(`[WhatsApp Bot Reply to ${from}]:\n${botReply.message}`);
-
-      return NextResponse.json({ success: true, reply: botReply.message });
+      return NextResponse.json({
+        success: true,
+        reply: botReply.message,
+        delivery_status: botReply.delivery_status,
+      });
     }
 
-    // Direct testing payload support: { phone, message }
+    // 2. Direct testing / simulator payload support: { phone, message }
     if (body.phone && body.message) {
       const botReply = await processWhatsAppMessage(body.phone, body.message);
-      return NextResponse.json({ success: true, reply: botReply.message });
+      const store = getStore();
+      return NextResponse.json({
+        success: true,
+        reply: botReply.message,
+        delivery_status: botReply.delivery_status,
+        messages: store.whatsapp_messages,
+      });
     }
 
     return NextResponse.json({ success: true, received: true });

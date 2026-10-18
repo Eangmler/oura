@@ -25,14 +25,25 @@ export const CITY_COORDS: Record<string, CityCoord> = {
 export interface HardwareTracker {
   id: string; // e.g. "oura-tag-01"
   name: string; // e.g. "Smart Tag #01 (Accra-Kumasi)"
-  type: "google_find_my" | "google_maps_share" | "live_device_gps";
+  type: "google_find_my" | "google_maps_share" | "live_device_gps" | "google_find_my_tag" | "google_find_my_phone" | "gt06_hardwired";
   share_url: string; // Permanent Google Find My or Google Maps Share URL configured ONCE
   status: "available" | "in_use" | "maintenance";
   current_shipment_id?: string | null;
+  battery_pct?: number;
   last_lat?: number;
   last_lng?: number;
   last_speed_kmh?: number;
   last_updated?: string;
+}
+
+export interface WhatsAppMessageLog {
+  id: string;
+  phone: string;
+  direction: "inbound" | "outbound_reply" | "outbound_notification";
+  text: string;
+  tracking_id?: string;
+  timestamp: string;
+  delivery_status: "sent_cloud_api" | "logged_sandbox";
 }
 
 export interface TrackerPing {
@@ -43,7 +54,7 @@ export interface TrackerPing {
   lng: number;
   timestamp: string;
   speed_kmh?: number;
-  source?: "gps_device" | "google_find_my" | "terminal_rep" | "simulation" | "live_browser_gps";
+  source?: "gps_device" | "google_find_my" | "terminal_rep" | "simulation" | "live_browser_gps" | "manual_rep" | "device_browser_gps";
 }
 
 export interface CourierInfo {
@@ -119,6 +130,7 @@ export interface OuraSettings {
   momo_name: string;
   payment_instructions_template: string;
   whatsapp_number: string;
+  whatsapp_phone_number_id?: string;
   whatsapp_token: string;
   whatsapp_enabled: boolean;
   rates: {
