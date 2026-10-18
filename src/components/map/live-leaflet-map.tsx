@@ -67,10 +67,10 @@ export const LiveLeafletMap = ({
       // Add zoom control at top right
       L.control.zoom({ position: "topright" }).addTo(map);
 
-      // Free, high performance, ultra crisp CartoDB Voyager map tiles
-      L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+      // 100% Free OpenStreetMap tiles (No API key required, zero billing, zero account)
+      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 19,
-        subdomains: "abcd",
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       }).addTo(map);
 
       // Route Polyline (Dark line with orange glow, matching design screenshot)
