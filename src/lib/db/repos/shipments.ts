@@ -1,5 +1,6 @@
 import { Shipment, ShipmentStatus } from "@/types";
 import { getStore } from "../store";
+import { assignTrackerToShipment, releaseTrackerFromShipment } from "./trackers";
 
 export function generateTrackingId(originCity: string, destCity: string): string {
   const originCode = originCity.toLowerCase().includes("acc") ? "ACC" : "KSI";
@@ -73,6 +74,7 @@ export async function updateShipmentStatus(
   options?: {
     rep_id?: string;
     tracker_id?: string;
+    google_maps_share_url?: string;
     courier_name?: string;
     courier_phone?: string;
   }
@@ -88,6 +90,7 @@ export async function updateShipmentStatus(
     ...current,
     status,
     tracker_id: options?.tracker_id ?? current.tracker_id,
+    google_maps_share_url: options?.google_maps_share_url ?? current.google_maps_share_url,
     assigned_rep_id: options?.rep_id ?? current.assigned_rep_id,
     picked_up_at: status === "picked_up" ? new Date().toISOString() : current.picked_up_at,
     delivered_at: status === "delivered" ? new Date().toISOString() : current.delivered_at,
@@ -103,7 +106,19 @@ export async function updateShipmentStatus(
   }
 
   store.shipments[index] = updated;
-  return updated;
+
+  // If a hardware tracker tag was selected, bind it from the central registry
+  // (automatically inherits the permanent Google Find My URL & latest GPS coordinates)
+  if (options?.tracker_id) {
+    await assignTrackerToShipment(options.tracker_id, trackingId);
+  }
+
+  // When a shipment is marked delivered, automatically free the hardware tag for the next trip
+  if (status === "delivered") {
+    await releaseTrackerFromShipment(trackingId);
+  }
+
+  return store.shipments[index];
 }
 
 export async function confirmShipmentPayment(trackingId: string): Promise<Shipment | null> {

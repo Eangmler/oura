@@ -22,6 +22,19 @@ export const CITY_COORDS: Record<string, CityCoord> = {
   kumasi: { name: "Kumasi", lat: 6.6885, lng: -1.6244, terminalName: "VIP Bus Terminal, Asafo" },
 };
 
+export interface HardwareTracker {
+  id: string; // e.g. "oura-tag-01"
+  name: string; // e.g. "Smart Tag #01 (Accra-Kumasi)"
+  type: "google_find_my" | "google_maps_share" | "live_device_gps";
+  share_url: string; // Permanent Google Find My or Google Maps Share URL configured ONCE
+  status: "available" | "in_use" | "maintenance";
+  current_shipment_id?: string | null;
+  last_lat?: number;
+  last_lng?: number;
+  last_speed_kmh?: number;
+  last_updated?: string;
+}
+
 export interface TrackerPing {
   id: string;
   shipment_id: string;
@@ -30,7 +43,7 @@ export interface TrackerPing {
   lng: number;
   timestamp: string;
   speed_kmh?: number;
-  source?: "gps_device" | "google_find_my" | "terminal_rep" | "simulation";
+  source?: "gps_device" | "google_find_my" | "terminal_rep" | "simulation" | "live_browser_gps";
 }
 
 export interface CourierInfo {
@@ -122,9 +135,9 @@ export interface OuraSettings {
       oversized: number;
     };
     pickup_zones: {
-      zone_a: number; // < 5km from Circle / Asafo
-      zone_b: number; // 5-15km
-      zone_c: number; // > 15km
+      zone_a: number;
+      zone_b: number;
+      zone_c: number;
     };
     delivery_zones: {
       zone_a: number;

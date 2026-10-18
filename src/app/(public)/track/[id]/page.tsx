@@ -11,7 +11,9 @@ import {
   RefreshCw,
   MapPin,
   ExternalLink,
-  Share2,
+  Navigation,
+  Radio,
+  Sparkles,
 } from "lucide-react";
 import { Navbar } from "@/components/ui/navbar";
 import { StatusStepper } from "@/components/ui/status-stepper";
@@ -31,6 +33,15 @@ const LiveLeafletMap = dynamic(
   }
 );
 
+const HIGHWAY_CHECKPOINTS = [
+  { name: "Accra VIP", lat: 5.5698, lng: -0.2141, speed: 0 },
+  { name: "Nsawam", lat: 5.8089, lng: -0.3522, speed: 68 },
+  { name: "Suhum", lat: 6.0409, lng: -0.4505, speed: 75 },
+  { name: "Nkawkaw", lat: 6.5512, lng: -0.7681, speed: 72 },
+  { name: "Konongo", lat: 6.6184, lng: -1.2179, speed: 64 },
+  { name: "Kumasi VIP", lat: 6.6885, lng: -1.6163, speed: 0 },
+];
+
 export default function TrackingDetailPage() {
   const params = useParams();
   const trackingId = (params.id as string) || "H314315796";
@@ -39,6 +50,7 @@ export default function TrackingDetailPage() {
   const [latestPing, setLatestPing] = useState<TrackerPing | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [testNotice, setTestNotice] = useState("");
 
   const fetchStatus = () => {
     fetch(`/api/shipments/${trackingId}`)
@@ -69,9 +81,62 @@ export default function TrackingDetailPage() {
 
   useEffect(() => {
     fetchStatus();
-    const timer = setInterval(fetchStatus, 8000);
+    const timer = setInterval(fetchStatus, 5000);
     return () => clearInterval(timer);
   }, [trackingId]);
+
+  const handleSimulateMove = async (cp: { name: string; lat: number; lng: number; speed: number }) => {
+    if (!shipment) return;
+    const tagId = shipment.tracker_id || "oura-tag-01";
+    await fetch("/api/trackers", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "gps_ping",
+        tracker_id: tagId,
+        lat: cp.lat,
+        lng: cp.lng,
+        speed_kmh: cp.speed,
+        source: "manual_rep",
+      }),
+    });
+    setTestNotice(`Moved ${tagId} to ${cp.name} (${cp.speed} km/h)`);
+    fetchStatus();
+  };
+
+  const handleUseMyDeviceGps = () => {
+    if (!shipment) return;
+    const tagId = shipment.tracker_id || "oura-tag-01";
+    if (!("geolocation" in navigator)) {
+      setTestNotice("Geolocation not supported. Tap a town button instead.");
+      return;
+    }
+    setTestNotice("Locating your device GPS...");
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = Number(pos.coords.latitude.toFixed(5));
+        const lng = Number(pos.coords.longitude.toFixed(5));
+        await fetch("/api/trackers", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "gps_ping",
+            tracker_id: tagId,
+            lat,
+            lng,
+            speed_kmh: 50,
+            source: "device_browser_gps",
+          }),
+        });
+        setTestNotice(`✓ Map updated to your live device GPS (${lat}, ${lng})`);
+        fetchStatus();
+      },
+      () => {
+        setTestNotice("Location permission blocked. Tap a Highway N6 town button to test!");
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  };
 
   if (loading) {
     return (
@@ -93,7 +158,7 @@ export default function TrackingDetailPage() {
           <div className="text-4xl mb-3">📦</div>
           <h1 className="text-base font-bold text-ink">Tracking ID Not Found</h1>
           <p className="text-xs text-muted max-w-xs mt-1">
-            We couldn't locate shipment "{trackingId}". Please check your tracking number or book a new delivery.
+            We couldn&apos;t locate shipment &quot;{trackingId}&quot;. Please check your tracking number or book a new delivery.
           </p>
           <Link
             href="/track"
@@ -108,6 +173,7 @@ export default function TrackingDetailPage() {
 
   const courierName = shipment.courier?.name || "Khalid Omor";
   const courierPhone = shipment.courier?.phone || "0248147952";
+  const findMyUrl = shipment.google_maps_share_url || "https://www.google.com/android/find/";
 
   return (
     <div className="min-h-screen bg-paper flex flex-col">
@@ -133,6 +199,11 @@ export default function TrackingDetailPage() {
               </div>
 
               <div className="flex items-center gap-2">
+                {shipment.tracker_id && (
+                  <span className="px-2.5 py-1 rounded-full bg-accent/10 text-accent text-[11px] font-extrabold font-data">
+                    🏷️ {shipment.tracker_id}
+                  </span>
+                )}
                 <button
                   onClick={fetchStatus}
                   className="px-3 py-1.5 rounded-full bg-white border border-line text-xs font-semibold text-ink flex items-center gap-1.5 shadow-subtle hover:bg-soft"
@@ -144,13 +215,45 @@ export default function TrackingDetailPage() {
             </div>
 
             {/* REAL INTERACTIVE LEAFLET MAP */}
-            <div className="h-[420px] lg:h-[620px] w-full rounded-card overflow-hidden border border-line/80 shadow-card relative">
+            <div className="h-[400px] lg:h-[540px] w-full rounded-card overflow-hidden border border-line/80 shadow-card relative">
               <LiveLeafletMap
                 originCity={shipment.origin_city}
                 destinationCity={shipment.destination_city}
                 latestPing={latestPing}
                 className="w-full h-full"
               />
+            </div>
+
+            {/* Interactive Live Test Bar (So you can test moving the tag right now without physical hardware) */}
+            <div className="p-3.5 rounded-card bg-white border border-line shadow-subtle space-y-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="text-[11px] font-bold text-ink flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-accent" />
+                  <span>Live Hardware Test Controls (Click to move pin on map):</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleUseMyDeviceGps}
+                  className="px-2.5 py-1 rounded-pill bg-ink text-white text-[10px] font-bold inline-flex items-center gap-1 hover:bg-ink/90"
+                >
+                  <Navigation className="w-3 h-3" /> Use My Device GPS
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {HIGHWAY_CHECKPOINTS.map((cp) => (
+                  <button
+                    key={cp.name}
+                    type="button"
+                    onClick={() => handleSimulateMove(cp)}
+                    className="px-2.5 py-1 rounded-pill bg-soft hover:bg-accent hover:text-white text-[10px] font-semibold text-ink border border-line transition-all"
+                  >
+                    📍 {cp.name}
+                  </button>
+                ))}
+              </div>
+              {testNotice && (
+                <div className="text-[11px] font-data font-semibold text-status-green">{testNotice}</div>
+              )}
             </div>
           </div>
 
@@ -180,7 +283,12 @@ export default function TrackingDetailPage() {
               <div className="grid grid-cols-2 gap-4 text-xs font-data border-b border-white/10 pb-3 pt-1">
                 <div>
                   <div className="text-[10px] text-white/40">
-                    Created, {new Date(shipment.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                    Created,{" "}
+                    {new Date(shipment.created_at).toLocaleDateString("en-GB", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
                   </div>
                   <div className="font-semibold text-white/90 truncate mt-0.5">
                     {shipment.origin_address || `${shipment.origin_city} Station`}
@@ -188,7 +296,14 @@ export default function TrackingDetailPage() {
                 </div>
                 <div className="text-right">
                   <div className="text-[10px] text-white/40">
-                    Estimated, {shipment.estimated_delivery ? new Date(shipment.estimated_delivery).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "Today"}
+                    Estimated,{" "}
+                    {shipment.estimated_delivery
+                      ? new Date(shipment.estimated_delivery).toLocaleDateString("en-GB", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })
+                      : "Today"}
                   </div>
                   <div className="font-semibold text-white/90 truncate mt-0.5">
                     {shipment.destination_address || `${shipment.destination_city} Hub`}
@@ -230,7 +345,9 @@ export default function TrackingDetailPage() {
                 <div className="col-span-5 flex justify-end">
                   <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-[#E2A662] to-[#B37837] p-2.5 flex flex-col justify-between shadow-lg relative border border-white/20 select-none">
                     <div className="flex justify-between items-start">
-                      <span className="text-[8px] bg-white/80 text-ink font-bold px-1.5 py-0.5 rounded">VIP</span>
+                      <span className="text-[8px] bg-white/80 text-ink font-bold px-1.5 py-0.5 rounded">
+                        VIP
+                      </span>
                       <span className="w-3 h-3 rounded-full bg-white/30" />
                     </div>
                     <div className="w-8 h-4 bg-white/70 rounded-sm self-center" />
@@ -249,7 +366,9 @@ export default function TrackingDetailPage() {
                   </div>
                   <div>
                     <div className="text-xs font-bold text-white leading-tight">{courierName}</div>
-                    <div className="text-[10px] text-white/50 leading-tight mt-0.5">VIP Transit Dispatch</div>
+                    <div className="text-[10px] text-white/50 leading-tight mt-0.5">
+                      VIP Transit Dispatch
+                    </div>
                   </div>
                 </div>
 
@@ -274,21 +393,23 @@ export default function TrackingDetailPage() {
                 </div>
               </div>
 
-              {/* Phase 2: Google Find My / External Map Link */}
-              {shipment.google_maps_share_url && (
-                <div className="pt-3 border-t border-white/10">
-                  <a
-                    href={shipment.google_maps_share_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs text-accent hover:underline"
-                  >
-                    <MapPin className="w-3.5 h-3.5" />
-                    <span>Open Hardware Google Find My Live Pin</span>
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
+              {/* Permanent Google Find My / Hardware Tag Live Pin Button */}
+              <div className="pt-3 border-t border-white/10 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 text-[11px] text-white/70 font-data">
+                  <Radio className="w-3.5 h-3.5 text-accent" />
+                  <span>Tag: {shipment.tracker_id || "oura-tag-01"}</span>
                 </div>
-              )}
+                <a
+                  href={findMyUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3.5 py-2 rounded-pill bg-white/10 hover:bg-white/20 text-accent font-bold text-xs inline-flex items-center gap-1.5 transition-all"
+                >
+                  <MapPin className="w-3.5 h-3.5" />
+                  <span>Open Google Find My Pin</span>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
             </div>
           </div>
         </div>

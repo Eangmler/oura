@@ -20,12 +20,15 @@ import {
   ExternalLink,
   Search,
   Check,
+  Radio,
+  Navigation,
+  Sparkles,
 } from "lucide-react";
 import { Navbar } from "@/components/ui/navbar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Shipment, TerminalRep, OuraSettings, TrackerPing } from "@/types";
+import { Shipment, TerminalRep, OuraSettings, TrackerPing, HardwareTracker } from "@/types";
 
 // Dynamic import for Leaflet map to guarantee SSR safety
 const LiveLeafletMap = dynamic(
@@ -40,15 +43,27 @@ const LiveLeafletMap = dynamic(
   }
 );
 
+const HIGHWAY_CHECKPOINTS = [
+  { name: "Accra VIP Circle", lat: 5.5698, lng: -0.2141, speed: 0 },
+  { name: "Nsawam Bypass", lat: 5.8089, lng: -0.3522, speed: 68 },
+  { name: "Suhum Junction", lat: 6.0409, lng: -0.4505, speed: 75 },
+  { name: "Nkawkaw Bypass", lat: 6.5512, lng: -0.7681, speed: 72 },
+  { name: "Konongo Odumasi", lat: 6.6184, lng: -1.2179, speed: 64 },
+  { name: "Kumasi VIP Asafo", lat: 6.6885, lng: -1.6163, speed: 0 },
+];
+
 export default function AdminDashboardPage() {
   const [adminAuth, setAdminAuth] = useState(false);
   const [pin, setPin] = useState("");
   const [authError, setAuthError] = useState("");
 
-  const [activeTab, setActiveTab] = useState<"overview" | "map" | "shipments" | "reps" | "settings">("overview");
+  const [activeTab, setActiveTab] = useState<
+    "overview" | "map" | "trackers" | "shipments" | "reps" | "settings"
+  >("overview");
 
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [reps, setReps] = useState<TerminalRep[]>([]);
+  const [trackers, setTrackers] = useState<HardwareTracker[]>([]);
   const [settings, setSettings] = useState<OuraSettings | null>(null);
   const [latestPing, setLatestPing] = useState<TrackerPing | null>(null);
 
@@ -56,6 +71,7 @@ export default function AdminDashboardPage() {
   const [savingSettings, setSavingSettings] = useState(false);
   const [saveToast, setSaveToast] = useState(false);
   const [searchFilter, setSearchFilter] = useState("");
+  const [simStatusMsg, setSimStatusMsg] = useState("");
 
   // Rep addition modal
   const [showAddRepModal, setShowAddRepModal] = useState(false);
@@ -63,6 +79,15 @@ export default function AdminDashboardPage() {
   const [newRepPhone, setNewRepPhone] = useState("");
   const [newRepTerminal, setNewRepTerminal] = useState("VIP-ACC");
   const [newRepPin, setNewRepPin] = useState("1234");
+
+  // Hardware Tracker addition/edit modal
+  const [showTrackerModal, setShowTrackerModal] = useState(false);
+  const [tagId, setTagId] = useState("");
+  const [tagName, setTagName] = useState("");
+  const [tagType, setTagType] = useState<"google_find_my_tag" | "google_find_my_phone" | "gt06_hardwired">(
+    "google_find_my_tag"
+  );
+  const [tagShareUrl, setTagShareUrl] = useState("https://www.google.com/android/find/");
 
   useEffect(() => {
     const isAuth = sessionStorage.getItem("oura_admin_auth");
@@ -77,11 +102,13 @@ export default function AdminDashboardPage() {
       fetch("/api/shipments").then((r) => r.json()),
       fetch("/api/reps").then((r) => r.json()),
       fetch("/api/settings").then((r) => r.json()),
+      fetch("/api/trackers").then((r) => r.json()),
     ])
-      .then(([shipData, repData, setData]) => {
+      .then(([shipData, repData, setData, trkData]) => {
         if (shipData.shipments) setShipments(shipData.shipments);
         if (repData.reps) setReps(repData.reps);
         if (setData.settings) setSettings(setData.settings);
+        if (trkData.trackers) setTrackers(trkData.trackers);
       })
       .catch((e) => console.error(e))
       .finally(() => setLoading(false));
@@ -203,6 +230,86 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const handleSaveTracker = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch("/api/trackers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: tagId,
+          name: tagName,
+          type: tagType,
+          share_url: tagShareUrl,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setShowTrackerModal(false);
+        setTagId("");
+        setTagName("");
+        loadAllData();
+      }
+    } catch (e) {
+      alert("Failed to save hardware tracker");
+    }
+  };
+
+  const handlePingMyDeviceGps = (trackerId: string = "oura-tag-01") => {
+    if (!("geolocation" in navigator)) {
+      setSimStatusMsg("Browser geolocation not available. Use a Highway Checkpoint button!");
+      return;
+    }
+    setSimStatusMsg("Reading your live device GPS coordinates...");
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = Number(pos.coords.latitude.toFixed(5));
+        const lng = Number(pos.coords.longitude.toFixed(5));
+        const speed = pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 50;
+
+        await fetch("/api/trackers", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "gps_ping",
+            tracker_id: trackerId,
+            lat,
+            lng,
+            speed_kmh: speed,
+            source: "device_browser_gps",
+          }),
+        });
+
+        setSimStatusMsg(`✓ Broadcasted your real GPS (${lat}, ${lng}) to ${trackerId}!`);
+        loadAllData();
+      },
+      () => {
+        setSimStatusMsg("Location permission blocked. Click any Highway Checkpoint button to test!");
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  };
+
+  const handleSimulateCheckpoint = async (
+    cp: { name: string; lat: number; lng: number; speed: number },
+    trackerId: string = "oura-tag-01"
+  ) => {
+    await fetch("/api/trackers", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "gps_ping",
+        tracker_id: trackerId,
+        lat: cp.lat,
+        lng: cp.lng,
+        speed_kmh: cp.speed,
+        source: "manual_rep",
+      }),
+    });
+    setSimStatusMsg(`✓ Moved ${trackerId} (Shipment #H314315796) to ${cp.name} (${cp.speed} km/h)`);
+    loadAllData();
+  };
+
   // ── 1. ADMIN LOGIN SCREEN ───────────────────────────────────────────────────
   if (!adminAuth) {
     return (
@@ -313,6 +420,7 @@ export default function AdminDashboardPage() {
           {[
             { id: "overview", label: "KPI Overview" },
             { id: "map", label: "Live Highway Map" },
+            { id: "trackers", label: `Hardware Trackers (${trackers.length})` },
             { id: "shipments", label: `Shipments Ledger (${shipments.length})` },
             { id: "reps", label: `Terminal Reps (${reps.length})` },
             { id: "settings", label: "System Settings" },
@@ -371,7 +479,7 @@ export default function AdminDashboardPage() {
                       {pendingPaymentCount} Payment(s) Awaiting Mobile Money Verification
                     </h3>
                   </div>
-                  <span className="text-xs text-muted">Check Ernest's MoMo SMS (`0248147952`)</span>
+                  <span className="text-xs text-muted">Check Ernest&apos;s MoMo SMS (`0248147952`)</span>
                 </div>
 
                 <div className="space-y-2">
@@ -385,7 +493,8 @@ export default function AdminDashboardPage() {
                         <div>
                           <div className="font-extrabold font-data text-ink">Reference: {s.tracking_id}</div>
                           <div className="text-muted mt-0.5">
-                            Customer: <strong>{s.sender_name}</strong> ({s.sender_phone}) ➔ Amount: <strong className="text-accent font-data">GHS {s.pricing?.total || 120}.00</strong>
+                            Customer: <strong>{s.sender_name}</strong> ({s.sender_phone}) ➔ Amount:{" "}
+                            <strong className="text-accent font-data">GHS {s.pricing?.total || 120}.00</strong>
                           </div>
                         </div>
 
@@ -426,19 +535,60 @@ export default function AdminDashboardPage() {
         {/* ── TAB 2: LIVE HIGHWAY MAP (Dedicated Substantial Operations View) ─ */}
         {activeTab === "map" && (
           <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h2 className="text-base font-bold text-ink flex items-center gap-2">
                   <span>Corridor Real-Time Tracking Operations</span>
                   <span className="text-xs bg-status-green-bg text-status-green font-semibold px-2 py-0.5 rounded-full">
-                    GPS Connected
+                    OpenStreetMap Live (Zero API Key)
                   </span>
                 </h2>
                 <p className="text-xs text-muted">
                   Interactive location mappings of all active VIP buses along Accra, Suhum, Nkawkaw, Konongo and Kumasi
                 </p>
               </div>
+
+              <div className="flex items-center gap-2">
+                <Button size="sm" onClick={() => handlePingMyDeviceGps("oura-tag-01")}>
+                  <Navigation className="w-3.5 h-3.5 mr-1.5" />
+                  Use My Device GPS Live
+                </Button>
+                <a
+                  href="https://www.google.com/android/find/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-2 rounded-pill bg-ink text-white text-xs font-bold inline-flex items-center gap-1.5 hover:bg-ink/90"
+                >
+                  <span>Open Google Find Hub</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </div>
             </div>
+
+            {/* 1-Click Highway Bus Movement Simulator Bar */}
+            <Card className="p-3.5 bg-white border border-line shadow-subtle flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-xs font-bold text-ink">
+                <Sparkles className="w-4 h-4 text-accent" />
+                <span>Test Live Bus Movement (Click any N6 town):</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {HIGHWAY_CHECKPOINTS.map((cp) => (
+                  <button
+                    key={cp.name}
+                    onClick={() => handleSimulateCheckpoint(cp, "oura-tag-01")}
+                    className="px-2.5 py-1 rounded-pill bg-soft hover:bg-ink hover:text-white text-[11px] font-semibold text-ink border border-line transition-all"
+                  >
+                    📍 {cp.name}
+                  </button>
+                ))}
+              </div>
+            </Card>
+
+            {simStatusMsg && (
+              <div className="p-3 rounded-card bg-status-green-bg text-status-green text-xs font-bold font-data">
+                {simStatusMsg}
+              </div>
+            )}
 
             <div className="h-[550px] w-full rounded-card overflow-hidden border border-line shadow-card">
               <LiveLeafletMap
@@ -451,7 +601,202 @@ export default function AdminDashboardPage() {
           </div>
         )}
 
-        {/* ── TAB 3: SHIPMENTS LEDGER ───────────────────────────────────────── */}
+        {/* ── TAB 3: HARDWARE TRACKERS (Google Find My Smart Tags & Devices) ── */}
+        {activeTab === "trackers" && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-bold text-ink">
+                  Hardware Tracker Registry (Register Once, Reuse Forever)
+                </h2>
+                <p className="text-xs text-muted">
+                  Pair your Smart Tags or Google Find My devices to your business Google account once. Reps assign tags with 1 click—no need to generate new links every trip!
+                </p>
+              </div>
+              <Button
+                size="sm"
+                onClick={() => {
+                  setTagId(`oura-tag-0${trackers.length + 1}`);
+                  setTagName(`Smart Tag #0${trackers.length + 1}`);
+                  setTagShareUrl("https://www.google.com/android/find/");
+                  setShowTrackerModal(true);
+                }}
+                className="flex items-center gap-1.5 shrink-0"
+              >
+                <Plus className="w-4 h-4" /> Register New Tag / Device
+              </Button>
+            </div>
+
+            {/* Live Testing Box for Ernest (Before Physical Tags Arrive) */}
+            <Card className="p-5 bg-ink text-white space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <div className="text-xs font-extrabold uppercase tracking-wider text-accent flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4" />
+                    <span>Instant Testing Without Physical Tags</span>
+                  </div>
+                  <p className="text-xs text-white/80 max-w-2xl">
+                    Since you don&apos;t have the physical Smart Tags yet, you can test right now using any device in your{" "}
+                    <a
+                      href="https://www.google.com/android/find/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline text-accent font-semibold"
+                    >
+                      Google Find My Hub
+                    </a>{" "}
+                    or by streaming your current phone/laptop GPS directly to{" "}
+                    <strong className="font-data text-white">oura-tag-01</strong>!
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button
+                    size="sm"
+                    onClick={() => handlePingMyDeviceGps("oura-tag-01")}
+                    className="bg-accent hover:bg-accent-dark text-white"
+                  >
+                    <Navigation className="w-3.5 h-3.5 mr-1.5" />
+                    Broadcast My Device GPS
+                  </Button>
+                  <Link
+                    href="/track/H314315796"
+                    target="_blank"
+                    className="px-3.5 py-2 rounded-pill bg-white/10 hover:bg-white/20 text-white text-xs font-bold inline-flex items-center gap-1.5"
+                  >
+                    <span>View Client Map (#H314315796)</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-white/10 flex flex-wrap items-center gap-2">
+                <span className="text-[11px] text-white/60 font-semibold">
+                  Simulate Highway N6 Checkpoints on #H314315796:
+                </span>
+                {HIGHWAY_CHECKPOINTS.map((cp) => (
+                  <button
+                    key={cp.name}
+                    onClick={() => handleSimulateCheckpoint(cp, "oura-tag-01")}
+                    className="px-2.5 py-1 rounded-pill bg-white/10 hover:bg-accent text-[11px] font-semibold text-white transition-all"
+                  >
+                    📍 {cp.name}
+                  </button>
+                ))}
+              </div>
+
+              {simStatusMsg && (
+                <div className="text-xs font-data font-bold text-status-green bg-white/10 px-3 py-2 rounded-lg">
+                  {simStatusMsg}
+                </div>
+              )}
+            </Card>
+
+            {/* Registered Trackers Cards Grid */}
+            <div className="grid sm:grid-cols-2 gap-4">
+              {trackers.map((t) => (
+                <Card key={t.id} className="p-5 bg-white border border-line shadow-card space-y-4">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-extrabold font-data text-ink">{t.id}</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-pill bg-soft border border-line font-semibold text-muted">
+                          {t.type === "google_find_my_tag"
+                            ? "Google Find My Tag"
+                            : t.type === "google_find_my_phone"
+                            ? "Google Find My Device"
+                            : "Hardwired GT06"}
+                        </span>
+                      </div>
+                      <div className="text-xs font-bold text-ink mt-1">{t.name}</div>
+                    </div>
+
+                    <span
+                      className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold ${
+                        t.status === "in_use"
+                          ? "bg-accent/15 text-accent"
+                          : "bg-status-green-bg text-status-green"
+                      }`}
+                    >
+                      {t.status === "in_use"
+                        ? `ON BUS (${t.assigned_shipment_id || "Assigned"})`
+                        : "AVAILABLE AT DESK"}
+                    </span>
+                  </div>
+
+                  {/* Permanent Share Link (Set Once) */}
+                  <div className="p-3 rounded-lg bg-soft border border-line space-y-1.5">
+                    <div className="flex items-center justify-between text-[10px] font-bold uppercase text-muted">
+                      <span>Permanent Google Find My / Maps Link (Set Once)</span>
+                      <a
+                        href={t.share_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-accent hover:underline inline-flex items-center gap-1"
+                      >
+                        Open Pin <ExternalLink className="w-2.5 h-2.5" />
+                      </a>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="url"
+                        defaultValue={t.share_url}
+                        id={`share-url-${t.id}`}
+                        className="flex-1 px-2.5 py-1.5 bg-white rounded border border-line text-xs font-data text-ink"
+                      />
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const el = document.getElementById(`share-url-${t.id}`) as HTMLInputElement;
+                          if (el?.value) {
+                            await fetch("/api/trackers", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                id: t.id,
+                                name: t.name,
+                                type: t.type,
+                                share_url: el.value,
+                              }),
+                            });
+                            setSimStatusMsg(`✓ Saved permanent link for ${t.id}`);
+                            loadAllData();
+                          }
+                        }}
+                        className="px-3 py-1.5 rounded bg-ink text-white text-[11px] font-bold hover:bg-ink/85"
+                      >
+                        Save Link
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Last Known GPS Coordinates & Quick Actions */}
+                  <div className="flex items-center justify-between text-xs pt-1 border-t border-line">
+                    <div className="text-[11px] text-muted font-data">
+                      {t.last_lat && t.last_lng ? (
+                        <span>
+                          GPS: <strong className="text-ink">{t.last_lat.toFixed(4)}, {t.last_lng.toFixed(4)}</strong> • Battery: {t.battery_pct}%
+                        </span>
+                      ) : (
+                        <span>Battery: {t.battery_pct}% • Ready for bus assignment</span>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handlePingMyDeviceGps(t.id)}
+                      className="text-xs font-bold text-accent hover:underline flex items-center gap-1"
+                    >
+                      <Navigation className="w-3 h-3" /> Ping My GPS Here
+                    </button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── TAB 4: SHIPMENTS LEDGER ───────────────────────────────────────── */}
         {activeTab === "shipments" && (
           <Card className="p-6 bg-white border border-line shadow-card space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -480,7 +825,7 @@ export default function AdminDashboardPage() {
                     <th className="py-3 px-4">Tracking ID</th>
                     <th className="py-3 px-4">Client</th>
                     <th className="py-3 px-4">Route</th>
-                    <th className="py-3 px-4">Item</th>
+                    <th className="py-3 px-4">Hardware Tag</th>
                     <th className="py-3 px-4">Amount</th>
                     <th className="py-3 px-4">Status</th>
                     <th className="py-3 px-4 text-right">Actions</th>
@@ -509,8 +854,14 @@ export default function AdminDashboardPage() {
                         <td className="py-3.5 px-4 text-muted">
                           {s.origin_city} ➔ {s.destination_city}
                         </td>
-                        <td className="py-3.5 px-4 text-ink font-medium">
-                          {s.item_description} ({s.weight_kg}kg)
+                        <td className="py-3.5 px-4 font-data text-xs">
+                          {s.tracker_id ? (
+                            <span className="px-2 py-0.5 rounded-pill bg-accent/10 text-accent font-bold">
+                              🏷️ {s.tracker_id}
+                            </span>
+                          ) : (
+                            <span className="text-muted">—</span>
+                          )}
                         </td>
                         <td className="py-3.5 px-4 font-bold font-data text-accent">
                           GHS {s.pricing?.total || 120}.00
@@ -543,7 +894,7 @@ export default function AdminDashboardPage() {
           </Card>
         )}
 
-        {/* ── TAB 4: REPS MANAGEMENT ────────────────────────────────────────── */}
+        {/* ── TAB 5: REPS MANAGEMENT ────────────────────────────────────────── */}
         {activeTab === "reps" && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -593,7 +944,7 @@ export default function AdminDashboardPage() {
           </div>
         )}
 
-        {/* ── TAB 5: SYSTEM SETTINGS (No-Code Operations Console) ──────────── */}
+        {/* ── TAB 6: SYSTEM SETTINGS (No-Code Operations Console) ──────────── */}
         {activeTab === "settings" && settings && (
           <form onSubmit={handleSaveSettings} className="space-y-6">
             <div className="flex items-center justify-between">
@@ -845,6 +1196,85 @@ export default function AdminDashboardPage() {
           </form>
         )}
       </main>
+
+      {/* Register Hardware Tracker Modal */}
+      {showTrackerModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <Card className="max-w-md w-full space-y-4 p-6 bg-white shadow-2xl">
+            <h2 className="text-base font-bold text-ink">Register Hardware Tag / Find My Device</h2>
+            <p className="text-xs text-muted">
+              Set this up once per tag. Reps will see it in their 1-click dropdown.
+            </p>
+
+            <form onSubmit={handleSaveTracker} className="space-y-3.5">
+              <div>
+                <label className="text-xs font-semibold text-ink">Tag Short ID (Printed on Tag)</label>
+                <input
+                  type="text"
+                  value={tagId}
+                  onChange={(e) => setTagId(e.target.value)}
+                  placeholder="e.g. oura-tag-04 or my-pixel-phone"
+                  className="w-full px-3.5 py-2.5 rounded-card border border-line bg-soft text-xs text-ink font-data"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-ink">Friendly Name</label>
+                <input
+                  type="text"
+                  value={tagName}
+                  onChange={(e) => setTagName(e.target.value)}
+                  placeholder="e.g. VIP Sack Tag #04 (Accra-Kumasi)"
+                  className="w-full px-3.5 py-2.5 rounded-card border border-line bg-soft text-xs text-ink"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-ink">Hardware Type</label>
+                <select
+                  value={tagType}
+                  onChange={(e) => setTagType(e.target.value as any)}
+                  className="w-full px-3.5 py-2.5 rounded-card border border-line bg-soft text-xs text-ink font-semibold"
+                >
+                  <option value="google_find_my_tag">Google Find My Smart Tag (ACCUTAG / Moto / Chipolo)</option>
+                  <option value="google_find_my_phone">Existing Device in Google Find My Hub</option>
+                  <option value="gt06_hardwired">Hardwired 4G Bus GPS (GT06N)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-ink">
+                  Permanent Google Find My / Google Maps Link
+                </label>
+                <input
+                  type="url"
+                  value={tagShareUrl}
+                  onChange={(e) => setTagShareUrl(e.target.value)}
+                  placeholder="https://www.google.com/android/find/"
+                  className="w-full px-3.5 py-2.5 rounded-card border border-line bg-soft text-xs text-ink font-data"
+                  required
+                />
+              </div>
+
+              <div className="flex gap-3 pt-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowTrackerModal(false)}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" className="flex-1">
+                  Save Tag to Registry
+                </Button>
+              </div>
+            </form>
+          </Card>
+        </div>
+      )}
 
       {/* Add Rep Modal */}
       {showAddRepModal && (

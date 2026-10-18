@@ -25,6 +25,7 @@ export async function PATCH(
     const updated = await updateShipmentStatus(params.id, body.status, {
       rep_id: body.rep_id,
       tracker_id: body.tracker_id,
+      google_maps_share_url: body.google_maps_share_url,
       courier_name: body.courier_name,
       courier_phone: body.courier_phone,
     });

@@ -1,4 +1,4 @@
-import { Shipment, TrackerPing, TerminalRep, OuraSettings } from "@/types";
+import { Shipment, TrackerPing, TerminalRep, OuraSettings, HardwareTracker } from "@/types";
 
 export const DEFAULT_SETTINGS: OuraSettings = {
   company_name: "oura",
@@ -37,6 +37,57 @@ export const DEFAULT_SETTINGS: OuraSettings = {
   },
 };
 
+export const INITIAL_TRACKERS: HardwareTracker[] = [
+  {
+    id: "oura-tag-01",
+    name: "Smart Tag #01 (Black ACCUTAG)",
+    type: "google_find_my",
+    share_url: "https://www.google.com/android/find/",
+    status: "in_use",
+    current_shipment_id: "H314315796",
+    last_lat: 6.0406,
+    last_lng: -0.4508,
+    last_speed_kmh: 78,
+    last_updated: new Date().toISOString(),
+  },
+  {
+    id: "oura-tag-02",
+    name: "Smart Tag #02 (Green ACCUTAG)",
+    type: "google_find_my",
+    share_url: "https://www.google.com/android/find/",
+    status: "available",
+    current_shipment_id: null,
+    last_lat: 5.5601,
+    last_lng: -0.2155,
+    last_speed_kmh: 0,
+    last_updated: new Date().toISOString(),
+  },
+  {
+    id: "oura-tag-03",
+    name: "Smart Tag #03 (Yellow ACCUTAG)",
+    type: "google_find_my",
+    share_url: "https://www.google.com/android/find/",
+    status: "available",
+    current_shipment_id: null,
+    last_lat: 6.6885,
+    last_lng: -1.6244,
+    last_speed_kmh: 0,
+    last_updated: new Date().toISOString(),
+  },
+  {
+    id: "test-device-01",
+    name: "My Test Device (Find My / Live Phone GPS)",
+    type: "live_device_gps",
+    share_url: "https://www.google.com/android/find/",
+    status: "available",
+    current_shipment_id: null,
+    last_lat: 5.6037,
+    last_lng: -0.187,
+    last_speed_kmh: 0,
+    last_updated: new Date().toISOString(),
+  },
+];
+
 export const INITIAL_REPS: TerminalRep[] = [
   {
     id: "rep-acc-01",
@@ -72,7 +123,6 @@ export const INITIAL_REPS: TerminalRep[] = [
   },
 ];
 
-// Seeded shipments including the one from the design screenshot (H314315796 / K37856307)
 export const INITIAL_SHIPMENTS: Shipment[] = [
   {
     id: "ship_h314315796",
@@ -99,7 +149,8 @@ export const INITIAL_SHIPMENTS: Shipment[] = [
     currency: "GHS",
     momo_reference: "H314315796",
     payment_confirmed: true,
-    tracker_id: "TRK-FINDMY-09",
+    tracker_id: "oura-tag-01",
+    google_maps_share_url: "https://www.google.com/android/find/",
     courier: {
       id: "courier-01",
       name: "Khalid Omor",
@@ -134,7 +185,7 @@ export const INITIAL_SHIPMENTS: Shipment[] = [
     currency: "GHS",
     momo_reference: "K37856307",
     payment_confirmed: true,
-    tracker_id: "TRK-002",
+    tracker_id: "oura-tag-02",
     courier: {
       id: "courier-02",
       name: "Ernest Angmler",
@@ -150,22 +201,22 @@ export const INITIAL_PINGS: TrackerPing[] = [
   {
     id: "ping_01",
     shipment_id: "H314315796",
-    tracker_id: "TRK-FINDMY-09",
-    lat: 5.9872,
-    lng: -0.4284, // Suhum along Accra-Kumasi Highway
-    speed_kmh: 75,
+    tracker_id: "oura-tag-01",
+    lat: 6.0406,
+    lng: -0.4508, // Suhum along Accra-Kumasi Highway
+    speed_kmh: 78,
     timestamp: new Date().toISOString(),
     source: "simulation",
   },
 ];
 
-// Global in-memory singleton for development and runtime persistence
 declare global {
   var __OURA_STORE__: {
     settings: OuraSettings;
     reps: TerminalRep[];
     shipments: Shipment[];
     pings: TrackerPing[];
+    trackers: HardwareTracker[];
   } | undefined;
 }
 
@@ -176,7 +227,11 @@ export function getStore() {
       reps: [...INITIAL_REPS],
       shipments: [...INITIAL_SHIPMENTS],
       pings: [...INITIAL_PINGS],
+      trackers: [...INITIAL_TRACKERS],
     };
+  }
+  if (!globalThis.__OURA_STORE__.trackers) {
+    globalThis.__OURA_STORE__.trackers = [...INITIAL_TRACKERS];
   }
   return globalThis.__OURA_STORE__;
 }

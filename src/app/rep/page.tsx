@@ -17,12 +17,24 @@ import {
   Shield,
   Phone,
   Search,
+  Radio,
+  BatteryCharging,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { StatusStepper } from "@/components/ui/status-stepper";
-import { Shipment, TerminalRep } from "@/types";
+import { Shipment, TerminalRep, HardwareTracker } from "@/types";
+
+const HIGHWAY_CHECKPOINTS = [
+  { name: "Accra VIP Circle", lat: 5.5698, lng: -0.2141, speed: 0 },
+  { name: "Nsawam Bypass", lat: 5.8089, lng: -0.3522, speed: 68 },
+  { name: "Suhum Junction", lat: 6.0409, lng: -0.4505, speed: 75 },
+  { name: "Nkawkaw Bypass", lat: 6.5512, lng: -0.7681, speed: 72 },
+  { name: "Konongo Odumasi", lat: 6.6184, lng: -1.2179, speed: 64 },
+  { name: "Kumasi VIP Asafo", lat: 6.6885, lng: -1.6163, speed: 0 },
+];
 
 export default function RepDashboardPage() {
   const [rep, setRep] = useState<TerminalRep | null>(null);
@@ -32,10 +44,13 @@ export default function RepDashboardPage() {
   const [authLoading, setAuthLoading] = useState(false);
 
   const [shipments, setShipments] = useState<Shipment[]>([]);
+  const [trackers, setTrackers] = useState<HardwareTracker[]>([]);
   const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null);
   const [filter, setFilter] = useState<"all" | "pickup" | "transit" | "arrived">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [updating, setUpdating] = useState(false);
+  const [gpsStatusMsg, setGpsStatusMsg] = useState("");
+  const [isStreamingDeviceGps, setIsStreamingDeviceGps] = useState(false);
 
   // New parcel quick logging modal
   const [showLogModal, setShowLogModal] = useState(false);
@@ -55,7 +70,7 @@ export default function RepDashboardPage() {
     }
   }, []);
 
-  const loadShipments = () => {
+  const loadData = () => {
     fetch("/api/shipments")
       .then((res) => res.json())
       .then((data) => {
@@ -70,11 +85,18 @@ export default function RepDashboardPage() {
         }
       })
       .catch((err) => console.error(err));
+
+    fetch("/api/trackers")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.trackers) setTrackers(data.trackers);
+      })
+      .catch((err) => console.error(err));
   };
 
   useEffect(() => {
     if (rep) {
-      loadShipments();
+      loadData();
     }
   }, [rep]);
 
@@ -110,7 +132,7 @@ export default function RepDashboardPage() {
   const handleUpdateStatus = async (
     trackingId: string,
     newStatus: string,
-    options?: { tracker_id?: string; courier_name?: string }
+    options?: { tracker_id?: string; courier_name?: string; google_maps_share_url?: string }
   ) => {
     setUpdating(true);
     try {
@@ -121,15 +143,107 @@ export default function RepDashboardPage() {
           status: newStatus,
           rep_id: rep?.id,
           tracker_id: options?.tracker_id,
+          google_maps_share_url: options?.google_maps_share_url,
           courier_name: options?.courier_name,
         }),
       });
       const data = await res.json();
       if (data.success) {
-        loadShipments();
+        loadData();
       }
     } catch (err) {
       alert("Failed to update status");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleBroadcastDeviceGps = () => {
+    if (!selectedShipment) return;
+    const activeTrackerId = selectedShipment.tracker_id || "test-device-01";
+
+    if (!("geolocation" in navigator)) {
+      setGpsStatusMsg("Geolocation not supported by this browser. Use a checkpoint button below.");
+      return;
+    }
+
+    setIsStreamingDeviceGps(true);
+    setGpsStatusMsg("Acquiring live GPS from your device...");
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = Number(pos.coords.latitude.toFixed(5));
+        const lng = Number(pos.coords.longitude.toFixed(5));
+        const speed = pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 45;
+
+        // Ensure tag is assigned first
+        if (!selectedShipment.tracker_id) {
+          await fetch(`/api/shipments/${selectedShipment.tracking_id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              status: selectedShipment.status === "at_terminal" ? "in_transit" : selectedShipment.status,
+              tracker_id: activeTrackerId,
+            }),
+          });
+        }
+
+        await fetch("/api/trackers", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "gps_ping",
+            tracker_id: activeTrackerId,
+            lat,
+            lng,
+            speed_kmh: speed,
+            source: "device_browser_gps",
+          }),
+        });
+
+        setGpsStatusMsg(`✓ Live Device GPS sent (${lat}, ${lng}) → Tag ${activeTrackerId}`);
+        setIsStreamingDeviceGps(false);
+        loadData();
+      },
+      (err) => {
+        setIsStreamingDeviceGps(false);
+        setGpsStatusMsg(`Location permission denied or unavailable. Click a Highway Checkpoint below to test!`);
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  };
+
+  const handleSimulateCheckpoint = async (cp: { name: string; lat: number; lng: number; speed: number }) => {
+    if (!selectedShipment) return;
+    const activeTrackerId = selectedShipment.tracker_id || "test-device-01";
+    setUpdating(true);
+    try {
+      if (!selectedShipment.tracker_id) {
+        await fetch(`/api/shipments/${selectedShipment.tracking_id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            status: "in_transit",
+            tracker_id: activeTrackerId,
+          }),
+        });
+      }
+
+      await fetch("/api/trackers", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "gps_ping",
+          tracker_id: activeTrackerId,
+          lat: cp.lat,
+          lng: cp.lng,
+          speed_kmh: cp.speed,
+          source: "manual_rep",
+        }),
+      });
+
+      setGpsStatusMsg(`✓ Simulated ${activeTrackerId} at ${cp.name} (${cp.speed} km/h)`);
+      loadData();
     } finally {
       setUpdating(false);
     }
@@ -164,7 +278,7 @@ export default function RepDashboardPage() {
         setLogDesc("");
         setLogSender("");
         setLogRecipient("");
-        loadShipments();
+        loadData();
       }
     } catch (err) {
       alert("Failed to log parcel");
@@ -290,7 +404,7 @@ export default function RepDashboardPage() {
             <span className="hidden sm:inline">Log Parcel</span>
           </Button>
           <button
-            onClick={loadShipments}
+            onClick={loadData}
             className="p-2 rounded-full border border-line text-muted hover:text-ink"
             title="Refresh"
           >
@@ -368,8 +482,15 @@ export default function RepDashboardPage() {
                     >
                       <div className="flex items-start justify-between">
                         <div>
-                          <div className="text-xs font-extrabold font-data text-ink">
-                            {s.tracking_id}
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-extrabold font-data text-ink">
+                              {s.tracking_id}
+                            </span>
+                            {s.tracker_id && (
+                              <span className="text-[10px] font-data bg-accent/10 text-accent font-bold px-2 py-0.5 rounded-pill">
+                                🏷️ {s.tracker_id}
+                              </span>
+                            )}
                           </div>
                           <div className="text-xs font-semibold text-ink mt-0.5">
                             {s.item_description} ({s.weight_kg}kg)
@@ -406,7 +527,7 @@ export default function RepDashboardPage() {
                     target="_blank"
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-pill border border-line text-xs font-semibold text-ink hover:bg-soft shadow-subtle"
                   >
-                    <span>Customer Tracking Link</span>
+                    <span>Open Live Customer Map</span>
                     <ExternalLink className="w-3.5 h-3.5" />
                   </Link>
                 </div>
@@ -436,7 +557,7 @@ export default function RepDashboardPage() {
                       variant={selectedShipment.status === "in_transit" ? "secondary" : "outline"}
                       onClick={() =>
                         handleUpdateStatus(selectedShipment.tracking_id, "in_transit", {
-                          tracker_id: selectedShipment.tracker_id || "TRK-FINDMY-09",
+                          tracker_id: selectedShipment.tracker_id || "oura-tag-01",
                         })
                       }
                     >
@@ -461,40 +582,133 @@ export default function RepDashboardPage() {
                   </div>
                 </div>
 
-                {/* Hardware Tracker Tag Assignment */}
-                <div className="p-4 rounded-card border border-line bg-soft/50 space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold text-ink">Physical GPS Tracker / Find My Tag</span>
-                    <span className="text-[10px] text-muted">
-                      Current: <strong>{selectedShipment.tracker_id || "None Assigned"}</strong>
+                {/* 1-CLICK REGISTERED HARDWARE TAG PICKER (Set Once in Admin, Reuse Forever) */}
+                <div className="p-4 rounded-card border border-line bg-soft/60 space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <div className="text-xs font-bold text-ink flex items-center gap-1.5">
+                        <Radio className="w-3.5 h-3.5 text-accent" />
+                        <span>1-Click Hardware Tracker Tag (Registered Once)</span>
+                      </div>
+                      <p className="text-[11px] text-muted">
+                        Tap a tag below to clip it onto this bus sack. Automatically unlinks when marked Delivered.
+                      </p>
+                    </div>
+                    <span className="text-[11px] font-data font-bold px-2.5 py-1 rounded-pill bg-white border border-line text-ink">
+                      Attached: {selectedShipment.tracker_id || "None"}
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      defaultValue={selectedShipment.tracker_id || ""}
-                      placeholder="e.g. TRK-FINDMY-09 or Concox IMEI"
-                      id={`tracker-tag-${selectedShipment.id}`}
-                      className="flex-1 px-3 py-2 bg-white rounded-lg text-xs font-data border border-line focus:outline-none focus:border-accent"
-                    />
+                  {/* Pre-registered Hardware Tags Grid */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {trackers.map((t) => {
+                      const isCurrent = selectedShipment.tracker_id === t.id;
+                      const isBusyOther =
+                        t.status === "in_use" &&
+                        t.assigned_shipment_id &&
+                        t.assigned_shipment_id !== selectedShipment.tracking_id;
+                      return (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() =>
+                            handleUpdateStatus(
+                              selectedShipment.tracking_id,
+                              selectedShipment.status === "at_terminal" ? "in_transit" : selectedShipment.status,
+                              { tracker_id: t.id }
+                            )
+                          }
+                          className={`p-2.5 rounded-xl border text-left transition-all ${
+                            isCurrent
+                              ? "bg-ink text-white border-ink shadow-sm"
+                              : isBusyOther
+                              ? "bg-white/60 text-muted border-line"
+                              : "bg-white text-ink border-line hover:border-accent"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-extrabold font-data">{t.id}</span>
+                            <span
+                              className={`w-2 h-2 rounded-full ${
+                                isCurrent
+                                  ? "bg-accent"
+                                  : isBusyOther
+                                  ? "bg-status-amber"
+                                  : "bg-status-green"
+                              }`}
+                            />
+                          </div>
+                          <div
+                            className={`text-[10px] truncate mt-0.5 ${
+                              isCurrent ? "text-white/80" : "text-muted"
+                            }`}
+                          >
+                            {t.name}
+                          </div>
+                          <div
+                            className={`text-[9px] font-data mt-1 ${
+                              isCurrent ? "text-accent font-bold" : "text-muted"
+                            }`}
+                          >
+                            {isCurrent
+                              ? "✓ Active Here"
+                              : isBusyOther
+                              ? `On ${t.assigned_shipment_id}`
+                              : "Available"}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* LIVE DEVICE GPS & HIGHWAY SIMULATOR (Test Without Physical Tags Right Now) */}
+                <div className="p-4 rounded-card border border-accent/30 bg-accent/5 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <div className="text-xs font-extrabold text-ink flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-accent" />
+                        <span>Live GPS Test Mode (No Physical Tag Required)</span>
+                      </div>
+                      <p className="text-[11px] text-muted">
+                        Stream your current phone/laptop GPS or click any Highway N6 town to watch the map move live!
+                      </p>
+                    </div>
                     <Button
                       size="sm"
-                      onClick={() => {
-                        const input = document.getElementById(
-                          `tracker-tag-${selectedShipment.id}`
-                        ) as HTMLInputElement;
-                        if (input?.value) {
-                          handleUpdateStatus(selectedShipment.tracking_id, selectedShipment.status, {
-                            tracker_id: input.value,
-                          });
-                          alert(`Tracker ${input.value} linked to ${selectedShipment.tracking_id}!`);
-                        }
-                      }}
+                      onClick={handleBroadcastDeviceGps}
+                      disabled={isStreamingDeviceGps}
+                      className="shrink-0"
                     >
-                      Link Hardware
+                      <Navigation className="w-3.5 h-3.5 mr-1.5" />
+                      {isStreamingDeviceGps ? "Locating..." : "Ping My Device GPS Now"}
                     </Button>
                   </div>
+
+                  {/* 1-Click Highway Checkpoints */}
+                  <div className="space-y-1.5">
+                    <div className="text-[10px] font-bold uppercase text-muted">
+                      Or Tap a Highway N6 Bus Checkpoint to Move Live Map Pin:
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {HIGHWAY_CHECKPOINTS.map((cp) => (
+                        <button
+                          key={cp.name}
+                          type="button"
+                          onClick={() => handleSimulateCheckpoint(cp)}
+                          className="px-2.5 py-1.5 rounded-pill bg-white border border-line hover:border-accent text-[11px] font-semibold text-ink transition-all shadow-subtle"
+                        >
+                          📍 {cp.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {gpsStatusMsg && (
+                    <div className="text-[11px] font-data font-semibold text-status-green bg-white px-3 py-2 rounded-lg border border-line">
+                      {gpsStatusMsg}
+                    </div>
+                  )}
                 </div>
 
                 {/* Pickup Orchestration: Uber / Ernest */}

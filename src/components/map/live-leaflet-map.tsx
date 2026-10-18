@@ -182,10 +182,20 @@ export const LiveLeafletMap = ({
     };
   }, []);
 
-  // Update marker position dynamically when a new tracker ping arrives
+  // Update marker position and pan map dynamically when a new tracker ping arrives
   useEffect(() => {
     if (mapInstanceRef.current && markerRef.current && latestPing) {
       markerRef.current.setLatLng([latestPing.lat, latestPing.lng]);
+      const speedText = latestPing.speed_kmh ? `${latestPing.speed_kmh} km/h` : "Stationary";
+      markerRef.current.setPopupContent(
+        `<div style="font-size:11px; padding:2px;">
+          <strong style="color:#E85D26;">oura Hardware Tracker</strong><br>
+          Speed: ${speedText}<br>
+          Device: ${latestPing.tracker_id || "oura-tag-01"}<br>
+          Coords: ${latestPing.lat.toFixed(4)}, ${latestPing.lng.toFixed(4)}
+        </div>`
+      );
+      mapInstanceRef.current.panTo([latestPing.lat, latestPing.lng], { animate: true });
     }
   }, [latestPing]);
 
