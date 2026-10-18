@@ -40,15 +40,17 @@ export default function HomePage() {
     <main className="min-h-screen bg-paper pb-32">
       {/* Top Header */}
       <header className="px-5 pt-4 pb-2 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-ink/5 flex items-center justify-center text-ink">
-            <Truck className="w-4 h-4" />
-          </div>
+        <div className="flex items-center gap-2.5">
+          <img
+            src="/icon-192.png"
+            alt="oura"
+            className="w-9 h-9 rounded-xl object-cover shadow-sm border border-line"
+          />
           <div>
             <div className="text-[11px] font-data text-muted leading-none">Intercity Express</div>
-            <div className="text-sm font-semibold text-ink flex items-center gap-1 mt-0.5">
-              <span>oura</span>
-              <span className="text-[10px] bg-accent/15 text-accent px-1.5 py-0.2 rounded font-medium">
+            <div className="text-sm font-extrabold text-ink flex items-center gap-1.5 mt-0.5">
+              <span className="tracking-tight">oura</span>
+              <span className="text-[10px] bg-accent/15 text-accent px-1.5 py-0.5 rounded font-medium">
                 accra ↔ kumasi
               </span>
             </div>

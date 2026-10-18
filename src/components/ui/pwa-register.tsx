@@ -20,7 +20,6 @@ export const PwaRegister = () => {
     const handleBeforeInstall = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      // Show install prompt if not previously dismissed
       const dismissed = localStorage.getItem("oura_pwa_dismissed");
       if (!dismissed) {
         setShowBanner(true);
@@ -49,11 +48,13 @@ export const PwaRegister = () => {
 
   return (
     <div className="fixed top-3 left-4 right-4 z-50 max-w-md mx-auto animate-in fade-in slide-in-from-top-4 duration-300">
-      <div className="bg-ink text-white p-3.5 rounded-card shadow-float border border-white/10 flex items-center justify-between gap-3 backdrop-blur-md">
+      <div className="bg-ink text-white p-3 rounded-card shadow-float border border-white/10 flex items-center justify-between gap-3 backdrop-blur-md">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-accent text-white flex items-center justify-center font-bold text-xs shrink-0">
-            oura
-          </div>
+          <img
+            src="/icon-192.png"
+            alt="oura"
+            className="w-10 h-10 rounded-xl object-cover shadow-sm shrink-0 border border-white/10"
+          />
           <div className="text-xs">
             <div className="font-bold text-white leading-tight">Install oura App</div>
             <div className="text-[10px] text-white/60 leading-tight mt-0.5">
@@ -65,7 +66,7 @@ export const PwaRegister = () => {
         <div className="flex items-center gap-1.5 shrink-0">
           <button
             onClick={handleInstallClick}
-            className="px-3 py-1.5 bg-accent hover:bg-accent-hover text-white text-[11px] font-bold rounded-pill shadow-sm transition-all flex items-center gap-1"
+            className="px-3.5 py-1.5 bg-accent hover:bg-accent-hover text-white text-[11px] font-bold rounded-pill shadow-sm transition-all flex items-center gap-1"
           >
             <Download className="w-3 h-3 stroke-[2.5]" /> Install
           </button>

@@ -7,8 +7,8 @@ export const metadata: Metadata = {
   description: "Intercity parcel delivery between Accra and Kumasi via VIP Express with live hardware tracking.",
   manifest: "/manifest.json",
   icons: {
-    icon: "/icon-192.svg",
-    apple: "/icon-192.svg",
+    icon: "/icon-192.png",
+    apple: "/apple-touch-icon.png",
   },
   appleWebApp: {
     capable: true,
@@ -36,7 +36,7 @@ export default function RootLayout({
         <link rel="manifest" href="/manifest.json" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <link rel="apple-touch-icon" href="/icon-192.svg" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       </head>
       <body className="font-body bg-paper text-ink min-h-screen">
         <PwaRegister />

@@ -1,13 +1,15 @@
 // oura Service Worker — Offline Cache & PWA Shell
-const CACHE_NAME = "oura-v1";
+const CACHE_NAME = "oura-v2";
 const OFFLINE_URLS = [
   "/",
   "/book",
   "/track",
   "/rep",
   "/manifest.json",
-  "/icon-192.svg",
-  "/icon-512.svg"
+  "/icon-192.png",
+  "/icon-512.png",
+  "/apple-touch-icon.png",
+  "/favicon.png"
 ];
 
 self.addEventListener("install", (event) => {
@@ -37,7 +39,6 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
 
-  // Stale-while-revalidate strategy for maximum speed on mobile networks
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       const fetchPromise = fetch(event.request)

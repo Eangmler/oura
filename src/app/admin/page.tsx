@@ -237,9 +237,11 @@ export default function AdminDashboardPage() {
       {/* Admin Top Header */}
       <header className="px-5 pt-4 pb-3 max-w-4xl mx-auto flex items-center justify-between border-b border-line/60 bg-white shadow-subtle">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-ink text-accent flex items-center justify-center font-bold text-xs">
-            ⚙️
-          </div>
+          <img
+            src="/icon-192.png"
+            alt="oura"
+            className="w-9 h-9 rounded-xl object-cover shadow-sm border border-line"
+          />
           <div>
             <div className="text-xs font-bold text-ink leading-tight">oura Admin Operations</div>
             <div className="text-[10px] text-muted">Accra ↔ Kumasi Live Console</div>
