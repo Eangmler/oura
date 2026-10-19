@@ -70,7 +70,7 @@ export async function dispatchWhatsAppMessage(
  * Sends a proactive WhatsApp notification to the client with an external link to the live map.
  */
 export async function sendWhatsAppStatusNotification(shipment: Shipment): Promise<void> {
-  const trackUrl = `https://oura-gold.vercel.app/track/${shipment.tracking_id}`;
+  const trackUrl = `https://useoura.com/track/${shipment.tracking_id}`;
   let text = "";
 
   switch (shipment.status) {

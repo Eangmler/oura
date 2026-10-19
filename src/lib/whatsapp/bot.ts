@@ -93,7 +93,7 @@ export async function processWhatsAppMessage(
         (found.tracker_id ? `🏷️ Hardware Tag: *${found.tracker_id}*\n` : "") +
         (ping ? `📡 Last GPS Ping: *${ping.lat.toFixed(4)}, ${ping.lng.toFixed(4)}* (${ping.speed_kmh || 0} km/h)\n` : "") +
         `\n🔔 *Note:* We will automatically message you here on WhatsApp whenever your parcel reaches the next station!\n\n` +
-        `🗺️ *Open Live Real-Time Map:*\nhttps://oura-gold.vercel.app/track/${found.tracking_id}`;
+        `🗺️ *Open Live Real-Time Map:*\nhttps://useoura.com/track/${found.tracking_id}`;
 
       const delivery_status = await dispatchWhatsAppMessage(
         phone,
@@ -268,7 +268,7 @@ export async function processWhatsAppMessage(
           `👤 *Account Name:* ${settings.momo_name}\n` +
           `🔑 *MoMo Reference:* *${shipment.tracking_id}*\n\n` +
           `Reply *PAID* once you have sent the MoMo transfer so we can dispatch your rider immediately!\n\n` +
-          `🗺️ *Real-Time Map Link (Save for later):*\nhttps://oura-gold.vercel.app/track/${shipment.tracking_id}`;
+          `🗺️ *Real-Time Map Link (Save for later):*\nhttps://useoura.com/track/${shipment.tracking_id}`;
 
         const delivery_status = await dispatchWhatsAppMessage(
           phone,
@@ -295,7 +295,7 @@ export async function processWhatsAppMessage(
           `2️⃣ Rider picks up your parcel\n` +
           `3️⃣ Parcel boards the VIP Express bus\n` +
           `4️⃣ Parcel arrives & is delivered!\n\n` +
-          `🗺️ *External Live Map Link:*\nhttps://oura-gold.vercel.app/track/${session.draft.tracking_id}`;
+          `🗺️ *External Live Map Link:*\nhttps://useoura.com/track/${session.draft.tracking_id}`;
         const delivery_status = await dispatchWhatsAppMessage(
           phone,
           reply,
@@ -308,7 +308,7 @@ export async function processWhatsAppMessage(
       const reply =
         `⏳ Awaiting MoMo payment for Booking ID *${session.draft.tracking_id}*.\n` +
         `Send *GHS ${session.draft.quote_total || 120}.00* to *${settings.momo_number}* (${settings.momo_name}) with reference *${session.draft.tracking_id}* and reply *PAID*.\n\n` +
-        `🗺️ Live Map: https://oura-gold.vercel.app/track/${session.draft.tracking_id}`;
+        `🗺️ Live Map: https://useoura.com/track/${session.draft.tracking_id}`;
       const delivery_status = await dispatchWhatsAppMessage(
         phone,
         reply,

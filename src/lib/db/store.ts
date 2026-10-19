@@ -228,7 +228,7 @@ export const INITIAL_WHATSAPP_MESSAGES: WhatsAppMessageLog[] = [
       "🏷️ Hardware Tag: *oura-tag-01*\n" +
       "📍 Route: *Accra (VIP Circle) ➔ Kumasi (VIP Asafo)*\n\n" +
       "Your parcel is now onboard the VIP coach heading to Kumasi. We will message you on WhatsApp as soon as it arrives at VIP Asafo!\n\n" +
-      "🗺️ *Follow Live Map Anytime:*\nhttps://oura-gold.vercel.app/track/H314315796",
+      "🗺️ *Follow Live Map Anytime:*\nhttps://useoura.com/track/H314315796",
     timestamp: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
     delivery_status: "logged_sandbox",
   },
