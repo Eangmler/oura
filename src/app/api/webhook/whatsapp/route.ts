@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { processWhatsAppMessage } from "@/lib/whatsapp/bot";
 import { getStore } from "@/lib/db/store";
+import { updateSettings, getSettings } from "@/lib/db/repos/settings";
 
 // GET for Meta webhook verification OR fetching live WhatsApp message logs for the simulator
 export async function GET(request: Request) {
@@ -17,8 +18,12 @@ export async function GET(request: Request) {
 
   if (searchParams.get("logs") === "true") {
     const store = getStore();
+    const settings = await getSettings();
     return NextResponse.json({
       success: true,
+      has_instance_id: Boolean(settings.whatsapp_phone_number_id),
+      has_token: Boolean(settings.whatsapp_token),
+      instance_id_preview: settings.whatsapp_phone_number_id || null,
       messages: store.whatsapp_messages || [],
     });
   }
@@ -30,6 +35,10 @@ export async function GET(request: Request) {
 // Supports (1) Meta Cloud API, (2) Green-API Instant QR-Code Bridge, and (3) Built-in Web Simulator
 export async function POST(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const urlToken = searchParams.get("token");
+    const urlInstanceId = searchParams.get("instanceId");
+
     const body = await request.json();
 
     // 1. Parse standard Meta WhatsApp Cloud API payload format
@@ -52,15 +61,30 @@ export async function POST(request: Request) {
 
     // 2. Parse Green-API Instant QR-Code Bridge payload (bypasses Meta 5-day review!)
     if (body.typeWebhook === "incomingMessageReceived") {
-      const senderChatId: string = body.senderData?.chatId || "";
-      const fromPhone = senderChatId.replace("@c.us", "");
+      // Auto-capture idInstance from Green-API's payload and optional ?token=... from URL
+      const greenInstanceId = String(body.instanceData?.idInstance || urlInstanceId || "").trim();
+      const authHeader = request.headers.get("authorization") || "";
+      const headerToken = authHeader.replace(/^Bearer\s+/i, "").trim();
+      const effectiveToken = (urlToken || headerToken || "").trim();
+
+      if (greenInstanceId || effectiveToken) {
+        const current = await getSettings();
+        await updateSettings({
+          whatsapp_phone_number_id: greenInstanceId || current.whatsapp_phone_number_id,
+          whatsapp_token: effectiveToken || current.whatsapp_token,
+          whatsapp_enabled: true,
+        });
+      }
+
+      // IMPORTANT: Keep @lid or @c.us intact so Green-API can reply to Linked-ID (@lid) and regular (@c.us) chats!
+      const senderChatId: string = body.senderData?.chatId || body.senderData?.sender || "";
       const text =
         body.messageData?.textMessageData?.textMessage ||
         body.messageData?.extendedTextMessageData?.text ||
         "";
 
-      if (fromPhone && text) {
-        const botReply = await processWhatsAppMessage(fromPhone, text);
+      if (senderChatId && text) {
+        const botReply = await processWhatsAppMessage(senderChatId, text);
         return NextResponse.json({
           success: true,
           reply: botReply.message,

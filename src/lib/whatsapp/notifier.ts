@@ -4,61 +4,117 @@ import { Shipment, WhatsAppMessageLog } from "@/types";
 
 /**
  * Helper to send a message via:
- * 1) Meta WhatsApp Cloud API (if Meta Phone Number ID + Token are set)
- * 2) OR Green-API Instant QR-Code Bridge (if Green-API Instance ID + Token are set — bypasses Meta 5-day review!)
- * 3) AND records it in our in-memory WhatsApp message log for live testing at https://useoura.com/whatsapp
+ * 1) Green-API Instant QR-Code Bridge (supports both @c.us and @lid chatIds!)
+ * 2) OR Meta WhatsApp Cloud API (if Meta Phone Number ID + Token are set)
+ * 3) AND records it in our WhatsApp message log for live inspection
  */
 export async function dispatchWhatsAppMessage(
   toPhone: string,
   text: string,
   direction: "inbound" | "outbound_reply" | "outbound_notification",
-  trackingId?: string
+  trackingId?: string,
+  overrideGreenApi?: { instanceId?: string; token?: string }
 ): Promise<"sent_cloud_api" | "logged_sandbox"> {
   const store = getStore();
   const settings = await getSettings();
   let deliveryStatus: "sent_cloud_api" | "logged_sandbox" = "logged_sandbox";
 
-  const digitsOnly = toPhone.replace(/\D/g, "");
-  const normalizedIntl = digitsOnly.startsWith("0")
-    ? `233${digitsOnly.slice(1)}`
-    : digitsOnly.startsWith("233")
-    ? digitsOnly
-    : `233${digitsOnly}`;
+  const idField = (
+    overrideGreenApi?.instanceId ||
+    process.env.GREEN_API_INSTANCE_ID ||
+    process.env.WHATSAPP_PHONE_NUMBER_ID ||
+    settings.whatsapp_phone_number_id ||
+    ""
+  ).trim();
 
-  if (direction !== "inbound" && settings.whatsapp_enabled && settings.whatsapp_token) {
-    const idField = (settings.whatsapp_phone_number_id || "").trim();
+  const tokenField = (
+    overrideGreenApi?.token ||
+    process.env.GREEN_API_TOKEN ||
+    process.env.WHATSAPP_TOKEN ||
+    settings.whatsapp_token ||
+    ""
+  ).trim();
 
-    // Mode A: Green-API QR-Code Bridge (Instance IDs are 10 digits starting with 110... or 710...)
-    // If user entered a Green-API Instance ID (or prefix "green:"), send via Green-API QR Bridge!
-    if (idField.startsWith("710") || idField.startsWith("110") || idField.startsWith("green:")) {
+  if (direction !== "inbound" && tokenField && idField) {
+    // Mode A: Green-API QR-Code Bridge (Instance IDs are 10 digits starting with 110... or 710..., or if token is 50 chars hex)
+    const isGreenApi =
+      idField.startsWith("710") ||
+      idField.startsWith("110") ||
+      idField.startsWith("green:") ||
+      toPhone.includes("@lid") ||
+      toPhone.includes("@c.us") ||
+      /^[a-f0-9]{40,60}$/i.test(tokenField);
+
+    if (isGreenApi) {
       const instanceId = idField.replace(/^green:/, "").trim();
+      // Preserve @lid or @c.us if present; otherwise normalize Ghana phone number to 233...@c.us
+      let chatId = toPhone.trim();
+      if (!chatId.includes("@")) {
+        const digitsOnly = chatId.replace(/\D/g, "");
+        const normalizedIntl = digitsOnly.startsWith("0")
+          ? `233${digitsOnly.slice(1)}`
+          : digitsOnly.startsWith("233")
+          ? digitsOnly
+          : `233${digitsOnly}`;
+        chatId = `${normalizedIntl}@c.us`;
+      }
+
+      // Green-API uses host prefix based on first 4 digits (e.g. 7103.api.greenapi.com or api.green-api.com)
+      const apiHost =
+        instanceId.length >= 4 && /^\d{4}/.test(instanceId)
+          ? `https://${instanceId.slice(0, 4)}.api.greenapi.com`
+          : `https://api.green-api.com`;
+
       try {
         const res = await fetch(
-          `https://api.green-api.com/waInstance${instanceId}/sendMessage/${settings.whatsapp_token.trim()}`,
+          `${apiHost}/waInstance${instanceId}/sendMessage/${tokenField}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              chatId: `${normalizedIntl}@c.us`,
+              chatId,
               message: text,
             }),
           }
         );
         if (res.ok) {
           deliveryStatus = "sent_cloud_api";
+        } else {
+          // Fallback to standard api.green-api.com if regional host returned non-200
+          const fallbackRes = await fetch(
+            `https://api.green-api.com/waInstance${instanceId}/sendMessage/${tokenField}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                chatId,
+                message: text,
+              }),
+            }
+          );
+          if (fallbackRes.ok) {
+            deliveryStatus = "sent_cloud_api";
+          }
         }
       } catch (e) {
         console.error("[Green-API QR Bridge Send Error]:", e);
       }
-    } else if (idField) {
+    } else {
       // Mode B: Official Meta WhatsApp Cloud API
+      const digitsOnly = toPhone.replace(/@.*$/, "").replace(/\D/g, "");
+      const normalizedIntl = digitsOnly.startsWith("0")
+        ? `233${digitsOnly.slice(1)}`
+        : digitsOnly.startsWith("233")
+        ? digitsOnly
+        : `233${digitsOnly}`;
+
       try {
         const res = await fetch(
           `https://graph.facebook.com/v19.0/${idField}/messages`,
           {
             method: "POST",
             headers: {
-              Authorization: `Bearer ${settings.whatsapp_token.trim()}`,
+              Authorization: `Bearer ${tokenField}`,
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
