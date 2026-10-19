@@ -94,7 +94,8 @@ export async function POST(request: Request) {
       const text =
         body.messageData?.textMessageData?.textMessage ||
         body.messageData?.extendedTextMessageData?.text ||
-        "";
+        body.messageData?.fileMessageData?.caption ||
+        (body.messageData?.typeMessage === "imageMessage" ? "Parcel Photo (Medium Box)" : "");
 
       if (senderChatId && text) {
         const botReply = await processWhatsAppMessage(senderChatId, text, senderName);

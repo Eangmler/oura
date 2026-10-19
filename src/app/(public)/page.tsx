@@ -2,544 +2,497 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import {
-  MessageCircle,
-  ArrowRight,
-  Package,
-  MapPin,
-  ShieldCheck,
-  Smartphone,
-  Truck,
-  BellRing,
-  CheckCircle2,
-  Search,
-  Radio,
-  Sparkles,
-} from "lucide-react";
-import { Navbar } from "@/components/ui/navbar";
-import { Card } from "@/components/ui/card";
+import { ArrowRight, Plus, Minus, Package } from "lucide-react";
 
 const WHATSAPP_URL = "https://wa.me/233599882827?text=Hi";
 
-export default function HomePage() {
-  const [trackingQuery, setTrackingQuery] = useState("");
+const FAQ_ITEMS = [
+  {
+    q: "How does oura work?",
+    a: "Tap 'Chat on WhatsApp', take a photo of your parcel (or type what you're sending), and drop your pickup and delivery locations. oura replies with an instant price, you approve via Mobile Money, and our rider picks it up from your door.",
+  },
+  {
+    q: "How do we deliver between Accra & Kumasi?",
+    a: "Our local rider collects your parcel from your doorstep, checks it into the VIP Express terminal, and places it on the next coach. Once it arrives in Kumasi or Accra, our destination rider delivers it straight to your recipient.",
+  },
+  {
+    q: "How does live GPS tracking work?",
+    a: "Every parcel batch is paired with a pre-registered oura GPS hardware tag at the terminal. You receive automatic WhatsApp status alerts at each checkpoint along the highway, plus an external link to view the live map anytime.",
+  },
+  {
+    q: "How do I pay for my delivery?",
+    a: "You pay seamlessly with MTN Mobile Money using your unique Booking ID as the reference. As soon as payment is confirmed, your rider is dispatched immediately.",
+  },
+  {
+    q: "How do I track an existing parcel?",
+    a: "Simply reply with your Booking ID (e.g. H21191059) inside the oura WhatsApp chat, or enter it in the live tracking field above to open the real-time highway map.",
+  },
+];
 
-  const handleTrackSubmit = (e: React.FormEvent) => {
+export default function HomePage() {
+  const [openFaq, setOpenFaq] = useState<number | null>(2);
+  const [mode, setMode] = useState<"track" | "quote">("track");
+  const [trackingId, setTrackingId] = useState("");
+  const [fromCity, setFromCity] = useState("Accra");
+  const [toCity, setToCity] = useState("Kumasi");
+  const [weightTier, setWeightTier] = useState<"small" | "medium" | "large">("medium");
+
+  const estimatedTotal =
+    weightTier === "small" ? 105 : weightTier === "medium" ? 130 : 170;
+
+  const handleTrack = (e: React.FormEvent) => {
     e.preventDefault();
-    if (trackingQuery.trim()) {
-      window.location.href = `/track/${trackingQuery.trim().toUpperCase()}`;
+    if (trackingId.trim()) {
+      window.location.href = `/track/${trackingId.trim().toUpperCase()}`;
     }
   };
 
   return (
-    <div className="min-h-screen bg-paper text-ink flex flex-col scroll-smooth">
-      <Navbar />
+    <div className="min-h-screen bg-[#DFDFE1] text-[#0F0F0F] flex flex-col font-body selection:bg-[#0F0F0F] selection:text-white scroll-smooth">
+      {/* MINIMALIST TOP BAR (Matches Cargo.Town top-left mark) */}
+      <header className="max-w-5xl w-full mx-auto px-6 sm:px-10 pt-7 pb-4 flex items-center justify-between">
+        <Link href="/" className="inline-flex items-center gap-2 group">
+          <Package className="w-4 h-4 text-[#0F0F0F] stroke-[2.2]" />
+          <span className="text-sm font-bold tracking-tight text-[#0F0F0F]">oura</span>
+        </Link>
 
-      {/* 1. HERO SECTION (Inspired by uselebe.com) */}
-      <section className="relative overflow-hidden pt-10 pb-16 sm:pt-16 sm:pb-24 border-b border-line/60">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-12 gap-10 lg:gap-12 items-center">
-            {/* Left Column: Headline, Description, 2 Primary CTA Buttons */}
-            <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-pill bg-white border border-line shadow-subtle text-xs font-bold text-ink">
-                <span className="w-2 h-2 rounded-full bg-[#25D366] animate-pulse" />
-                <span>Built for WhatsApp · Accra ↔ Kumasi Intercity Delivery</span>
-              </div>
+        <div className="flex items-center gap-6 text-xs font-semibold text-[#0F0F0F]/70">
+          <a href="#how-it-works" className="hover:text-[#0F0F0F] transition-colors hidden sm:inline">
+            How it works
+          </a>
+          <Link href="/track" className="hover:text-[#0F0F0F] transition-colors">
+            Track
+          </Link>
+          <a
+            href={WHATSAPP_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#0F0F0F]/20 bg-[#0F0F0F]/5 hover:bg-[#0F0F0F] hover:text-white text-[#0F0F0F] font-semibold transition-all"
+          >
+            <span>Chat on WhatsApp</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </a>
+        </div>
+      </header>
 
-              <h1 className="text-4xl sm:text-5xl lg:text-[54px] font-extrabold tracking-tight text-ink leading-[1.1]">
-                Your Intercity{" "}
-                <span className="text-accent underline decoration-accent/30 decoration-wavy underline-offset-8">
-                  Parcel Delivery
-                </span>{" "}
-                Assistant on WhatsApp
+      {/* MAIN EDITORIAL CANVAS */}
+      <main className="flex-1 max-w-5xl w-full mx-auto px-6 sm:px-10 pt-6 pb-20 space-y-20">
+        {/* 1. HERO SECTION */}
+        <section className="relative space-y-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* Left Headline & 2 Minimalist Buttons */}
+            <div className="lg:col-span-8 space-y-7 z-10">
+              <h1 className="text-[44px] sm:text-[64px] lg:text-[72px] font-bold tracking-[-0.04em] leading-[1.02]">
+                <span className="block text-[#0F0F0F]">Parcel. Delivery.</span>
+                <span className="block text-white">On WhatsApp.</span>
               </h1>
 
-              <p className="text-base sm:text-lg text-muted max-w-2xl mx-auto lg:mx-0 leading-relaxed">
-                Use <strong className="text-ink font-extrabold">oura</strong> to book door-to-door parcel pickups, ship packages between{" "}
-                <strong className="text-ink font-semibold">Accra</strong> and{" "}
-                <strong className="text-ink font-semibold">Kumasi</strong> via VIP Express coaches, pay with Mobile Money, and follow live GPS hardware tags — all without leaving WhatsApp.
-              </p>
-
-              {/* THE 2 PRIMARY BUTTONS (Just like uselebe.com) */}
-              <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3.5 pt-2">
+              <div className="flex flex-wrap items-center gap-4 pt-1">
+                {/* Button 1: Start a chat with oura on WhatsApp */}
                 <a
                   href={WHATSAPP_URL}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-7 py-4 rounded-pill bg-[#25D366] hover:bg-[#20bd5a] text-ink font-extrabold text-sm sm:text-base shadow-card transition-all hover:scale-[1.02]"
+                  className="inline-flex items-center justify-between gap-6 px-6 py-3.5 rounded-full bg-[#0F0F0F] text-white hover:bg-[#0F0F0F]/85 text-xs sm:text-sm font-semibold transition-all shadow-sm"
                 >
-                  <MessageCircle className="w-5 h-5 fill-ink/10" />
-                  <span>Start a chat with oura on WhatsApp</span>
-                </a>
-
-                <a
-                  href="#how-it-works"
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-4 rounded-pill bg-ink hover:bg-ink/90 text-white font-bold text-sm sm:text-base transition-all"
-                >
-                  <span>Learn how oura works</span>
+                  <span>Chat with oura</span>
                   <ArrowRight className="w-4 h-4" />
                 </a>
-              </div>
 
-              {/* Sub-caption like Lebe ("Beta in Ghana · Mobile money only...") */}
-              <div className="pt-1 flex flex-wrap items-center justify-center lg:justify-start gap-2 text-xs font-semibold text-muted">
-                <span className="text-ink font-bold">Live in Ghana</span>
-                <span>·</span>
-                <span>Accra ↔ Kumasi VIP Express</span>
-                <span>·</span>
-                <span>Mobile Money & Real-Time GPS Tags</span>
-              </div>
+                {/* Button 2: How it works */}
+                <a
+                  href="#how-it-works"
+                  className="inline-flex items-center justify-between gap-5 px-6 py-3.5 rounded-full border border-[#0F0F0F]/20 bg-white/30 hover:bg-white/60 text-[#0F0F0F] text-xs sm:text-sm font-semibold transition-all"
+                >
+                  <span>How it works</span>
+                  <ArrowRight className="w-4 h-4 rotate-90" />
+                </a>
 
-              {/* Optional Live Tracking Lookup Bar for existing parcels */}
-              <form
-                onSubmit={handleTrackSubmit}
-                className="pt-3 max-w-md mx-auto lg:mx-0"
+                <p className="text-[11px] sm:text-xs text-[#0F0F0F]/65 max-w-[230px] leading-snug pl-1">
+                  Snap a photo of your parcel in WhatsApp. Door-to-door between Accra &amp; Kumasi.
+                </p>
+              </div>
+            </div>
+
+            {/* Right Minimalist White Wireframe Parcel Illustration (Matches Cargo.Town wireframe art) */}
+            <div className="hidden lg:flex lg:col-span-4 justify-end items-start pt-2 pointer-events-none select-none">
+              <svg
+                viewBox="0 0 260 200"
+                className="w-64 h-48 stroke-white fill-none"
+                strokeWidth="1.5"
               >
-                <div className="text-[11px] font-bold uppercase tracking-wider text-muted mb-1.5">
-                  Already have a Booking ID? Open live GPS map:
-                </div>
-                <div className="relative flex items-center">
-                  <Search className="absolute left-3.5 w-4 h-4 text-muted pointer-events-none" />
-                  <input
-                    type="text"
-                    value={trackingQuery}
-                    onChange={(e) => setTrackingQuery(e.target.value)}
-                    placeholder="Enter Tracking ID (e.g. H314315796)..."
-                    className="w-full pl-10 pr-28 py-3 bg-white border border-line rounded-pill text-xs text-ink placeholder:text-muted/70 focus:outline-none focus:border-accent shadow-subtle font-data"
-                  />
-                  <button
-                    type="submit"
-                    className="absolute right-1.5 px-4 py-2 bg-accent text-white rounded-pill text-xs font-bold hover:bg-accent-dark transition-colors"
-                  >
-                    Track Live
-                  </button>
-                </div>
-              </form>
-            </div>
-
-            {/* Right Column: Interactive WhatsApp Chat Preview */}
-            <div className="lg:col-span-5">
-              <div className="bg-[#0F0F0F] rounded-[28px] p-3.5 shadow-float border border-ink/10 max-w-md mx-auto">
-                {/* WhatsApp Top Bar */}
-                <div className="bg-[#075E54] text-white px-4 py-3 rounded-t-[20px] flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center font-extrabold text-sm">
-                      oura
-                    </div>
-                    <div>
-                      <div className="text-xs font-extrabold flex items-center gap-1.5">
-                        <span>oura</span>
-                        <span className="inline-block w-3.5 h-3.5 rounded-full bg-[#25D366] text-[9px] text-ink font-black flex items-center justify-center">
-                          ✓
-                        </span>
-                      </div>
-                      <div className="text-[10px] text-white/80">+233 59 988 2827 · Online</div>
-                    </div>
-                  </div>
-                  <a
-                    href={WHATSAPP_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[10px] font-bold bg-[#25D366] text-ink px-2.5 py-1 rounded-pill"
-                  >
-                    Open Chat
-                  </a>
-                </div>
-
-                {/* WhatsApp Chat Wallpaper & Messages */}
-                <div className="bg-[#ECE5DD] p-3.5 space-y-2.5 text-[11px] leading-relaxed rounded-b-[20px]">
-                  {/* Customer msg */}
-                  <div className="flex justify-end">
-                    <div className="bg-[#DCF8C6] text-ink px-3 py-2 rounded-2xl rounded-tr-none shadow-sm max-w-[80%]">
-                      <div className="font-medium">Hi, I want to send a laptop from Dansoman to Kumasi</div>
-                      <div className="text-[9px] text-muted text-right mt-0.5">10:14 AM ✓✓</div>
-                    </div>
-                  </div>
-
-                  {/* Bot Quote reply */}
-                  <div className="flex justify-start">
-                    <div className="bg-white text-ink px-3.5 py-2.5 rounded-2xl rounded-tl-none shadow-sm max-w-[90%] space-y-1">
-                      <div className="font-extrabold text-[#075E54]">⚡ oura Instant WhatsApp Quote</div>
-                      <div className="text-[11px] space-y-0.5">
-                        <div>📦 Item: <strong>Laptop</strong> (~3.5kg, MEDIUM)</div>
-                        <div>📍 Pickup: Dansoman (Accra)</div>
-                        <div>🏁 Delivery: Atonsu (Kumasi)</div>
-                        <div>💰 <strong>Total: GHS 130.00</strong> (Pickup + VIP Bus + Delivery)</div>
-                      </div>
-                      <div className="text-[10px] text-muted pt-1">
-                        Reply <strong>YES</strong> to confirm & get your Tracking ID.
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Customer YES */}
-                  <div className="flex justify-end">
-                    <div className="bg-[#DCF8C6] text-ink px-3 py-1.5 rounded-2xl rounded-tr-none shadow-sm">
-                      <span className="font-bold">YES</span>
-                      <span className="text-[9px] text-muted ml-2">10:15 AM ✓✓</span>
-                    </div>
-                  </div>
-
-                  {/* Bot Confirmed + Live Map Link */}
-                  <div className="flex justify-start">
-                    <div className="bg-white text-ink px-3.5 py-2.5 rounded-2xl rounded-tl-none shadow-sm max-w-[92%] space-y-1">
-                      <div className="font-extrabold text-accent">🎉 Booking Confirmed! ID: H76730685</div>
-                      <div className="text-[10px] text-ink/90">
-                        🚌 We will message you here on WhatsApp at every station!
-                      </div>
-                      <div className="pt-1">
-                        <Link
-                          href="/track/H314315796"
-                          className="block bg-soft border border-line rounded-lg p-2 text-[10px] font-bold text-accent hover:underline"
-                        >
-                          🗺️ useoura.com/track/H314315796 →
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Bottom CTA inside phone */}
-                  <div className="pt-1">
-                    <a
-                      href={WHATSAPP_URL}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full py-2.5 bg-[#25D366] hover:bg-[#20bd5a] text-ink font-extrabold text-xs rounded-pill flex items-center justify-center gap-1.5 shadow-sm transition-all"
-                    >
-                      <MessageCircle className="w-3.5 h-3.5" />
-                      <span>Tap to Chat with oura (+233 59 988 2827)</span>
-                    </a>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 2. SCROLLING FEATURE TICKER BAR (Like uselebe.com marquee) */}
-      <div className="bg-ink text-white py-3.5 border-b border-line overflow-hidden">
-        <div className="max-w-6xl mx-auto px-4 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs sm:text-sm font-bold tracking-wide uppercase">
-          <span className="text-[#25D366]">book on whatsapp</span>
-          <span className="text-white/30">•</span>
-          <span>door-to-door pickup</span>
-          <span className="text-white/30">•</span>
-          <span className="text-accent">vip express transit</span>
-          <span className="text-white/30">•</span>
-          <span>live gps hardware tags</span>
-          <span className="text-white/30">•</span>
-          <span>mobile money payment</span>
-          <span className="text-white/30">•</span>
-          <span className="text-[#25D366]">instant whatsapp alerts</span>
-        </div>
-      </div>
-
-      {/* 3. HOW IT WORKS SECTION (#how-it-works — "How oura fits into your delivery life") */}
-      <section id="how-it-works" className="py-16 sm:py-24 bg-white border-b border-line/60 scroll-mt-16">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
-          <div className="max-w-2xl mx-auto text-center space-y-3">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-pill bg-accent/10 text-accent text-xs font-extrabold uppercase tracking-wider">
-              How It Works
-            </div>
-            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-ink">
-              How oura fits into your delivery life
-            </h2>
-            <p className="text-sm sm:text-base text-muted">
-              No app downloads, no paper waybills, and no waiting in line at the bus terminal. Everything happens inside the WhatsApp chat you already use every day.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {/* Step 1 */}
-            <Card className="p-6 bg-paper border border-line/80 space-y-4 relative">
-              <div className="w-11 h-11 rounded-2xl bg-[#25D366] text-ink font-black text-base flex items-center justify-center shadow-sm">
-                1
-              </div>
-              <h3 className="text-base font-extrabold text-ink">Start a chat</h3>
-              <p className="text-xs sm:text-sm text-muted leading-relaxed">
-                Tap <strong>“Start a chat with oura on WhatsApp”</strong> and say <strong>“Hi”</strong> to{" "}
-                <span className="font-data font-bold text-ink">+233 59 988 2827</span>. Choose Accra ➔ Kumasi or Kumasi ➔ Accra in one tap.
-              </p>
-            </Card>
-
-            {/* Step 2 */}
-            <Card className="p-6 bg-paper border border-line/80 space-y-4 relative">
-              <div className="w-11 h-11 rounded-2xl bg-ink text-white font-black text-base flex items-center justify-center shadow-sm">
-                2
-              </div>
-              <h3 className="text-base font-extrabold text-ink">Get an instant quote</h3>
-              <p className="text-xs sm:text-sm text-muted leading-relaxed">
-                Share your pickup neighborhood, destination address, recipient phone number, and item description. <strong>oura</strong> calculates your all-inclusive fare immediately.
-              </p>
-            </Card>
-
-            {/* Step 3 */}
-            <Card className="p-6 bg-paper border border-line/80 space-y-4 relative">
-              <div className="w-11 h-11 rounded-2xl bg-accent text-white font-black text-base flex items-center justify-center shadow-sm">
-                3
-              </div>
-              <h3 className="text-base font-extrabold text-ink">Approve with Mobile Money</h3>
-              <p className="text-xs sm:text-sm text-muted leading-relaxed">
-                Reply <strong>“YES”</strong> to receive your unique Booking ID and pay via MTN Mobile Money. Our dispatch desk verifies your transfer and sends a pickup rider to your door.
-              </p>
-            </Card>
-
-            {/* Step 4 */}
-            <Card className="p-6 bg-paper border border-line/80 space-y-4 relative">
-              <div className="w-11 h-11 rounded-2xl bg-status-green text-white font-black text-base flex items-center justify-center shadow-sm">
-                4
-              </div>
-              <h3 className="text-base font-extrabold text-ink">Track live on WhatsApp</h3>
-              <p className="text-xs sm:text-sm text-muted leading-relaxed">
-                Receive automatic WhatsApp alerts when your parcel is picked up, paired with a live GPS Smart Tag at the VIP station, onboard the coach, and delivered.
-              </p>
-            </Card>
-          </div>
-
-          <div className="text-center pt-2">
-            <a
-              href={WHATSAPP_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2.5 px-7 py-3.5 rounded-pill bg-[#25D366] hover:bg-[#20bd5a] text-ink font-extrabold text-sm shadow-sm transition-all"
-            >
-              <MessageCircle className="w-4 h-4" />
-              <span>Try booking on WhatsApp now</span>
-            </a>
-          </div>
-        </div>
-      </section>
-
-      {/* 4. WHAT OURA CAN DO (#features — Inspired by uselebe.com's 4 feature boxes) */}
-      <section id="features" className="py-16 sm:py-24 bg-paper border-b border-line/60 scroll-mt-16">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
-          <div className="max-w-2xl mx-auto text-center space-y-3">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-pill bg-white border border-line text-ink text-xs font-extrabold">
-              <MessageCircle className="w-3.5 h-3.5 text-[#25D366]" />
-              <span>Built for WhatsApp</span>
-            </div>
-            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-ink">
-              What oura Can Do
-            </h2>
-            <p className="text-sm sm:text-base text-muted">
-              <strong>oura</strong> works the way you already chat on WhatsApp — combining doorstep rider dispatch, VIP Express coaches, and live hardware GPS telemetry.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-6">
-            <Card className="p-7 bg-white border border-line/80 space-y-3 hover:shadow-card transition-all">
-              <div className="w-12 h-12 rounded-2xl bg-[#25D366]/15 text-status-green flex items-center justify-center">
-                <MessageCircle className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-extrabold text-ink">Book intercity deliveries in chat</h3>
-              <p className="text-xs sm:text-sm text-muted leading-relaxed">
-                Send laptops, documents, fashion packages, spare parts, or cartons between Accra and Kumasi in 4 quick replies. <strong>oura</strong> confirms all details in chat before dispatch.
-              </p>
-            </Card>
-
-            <Card className="p-7 bg-white border border-line/80 space-y-3 hover:shadow-card transition-all">
-              <div className="w-12 h-12 rounded-2xl bg-accent/15 text-accent flex items-center justify-center">
-                <Truck className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-extrabold text-ink">Door-to-door rider pickup & drop-off</h3>
-              <p className="text-xs sm:text-sm text-muted leading-relaxed">
-                Skip the heavy traffic to Circle or Asafo VIP stations. Our local riders collect your package from your home or office and deliver directly to the recipient in the destination city.
-              </p>
-            </Card>
-
-            <Card className="p-7 bg-white border border-line/80 space-y-3 hover:shadow-card transition-all">
-              <div className="w-12 h-12 rounded-2xl bg-ink/10 text-ink flex items-center justify-center">
-                <Radio className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-extrabold text-ink">Real-time GPS hardware tracking</h3>
-              <p className="text-xs sm:text-sm text-muted leading-relaxed">
-                At the VIP terminal, our reps attach a pre-registered <strong>oura Smart Tracker</strong> to the transit batch. Click your tracking link anytime to watch your parcel move live along the N6 highway.
-              </p>
-            </Card>
-
-            <Card className="p-7 bg-white border border-line/80 space-y-3 hover:shadow-card transition-all">
-              <div className="w-12 h-12 rounded-2xl bg-status-amber-bg text-status-amber flex items-center justify-center">
-                <BellRing className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-extrabold text-ink">Proactive WhatsApp status notifications</h3>
-              <p className="text-xs sm:text-sm text-muted leading-relaxed">
-                You never have to guess where your package is. <strong>oura</strong> automatically sends WhatsApp updates when payment is verified, at terminal check-in, when the VIP coach departs, and upon arrival.
-              </p>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* 5. BUILT FOR GHANA SECTION (#security — Inspired by uselebe.com's "Built for Ghana, growing with you") */}
-      <section id="security" className="py-16 sm:py-24 bg-ink text-white scroll-mt-16">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
-          <div className="max-w-2xl space-y-3">
-            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
-              Built for Ghana, growing with you
-            </h2>
-            <p className="text-sm sm:text-base text-white/75 leading-relaxed">
-              <strong>oura</strong> makes intercity parcel logistics between Accra and Kumasi effortless, transparent, and trackable directly from WhatsApp.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-6">
-            <div className="p-6 rounded-card bg-white/5 border border-white/10 space-y-2.5">
-              <div className="inline-flex items-center gap-1.5 text-xs font-extrabold text-[#25D366] uppercase tracking-wider">
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Live today</span>
-              </div>
-              <h3 className="text-lg font-bold text-white">Accra ↔ Kumasi Corridor</h3>
-              <p className="text-xs sm:text-sm text-white/70 leading-relaxed">
-                Instant WhatsApp booking, doorstep pickup & delivery, MTN Mobile Money checkout, VIP Express coach transit, and live GPS Smart Tag tracking.
-              </p>
-            </div>
-
-            <div className="p-6 rounded-card bg-white/5 border border-white/10 space-y-2.5">
-              <div className="inline-flex items-center gap-1.5 text-xs font-extrabold text-accent uppercase tracking-wider">
-                <Sparkles className="w-4 h-4" />
-                <span>In beta</span>
-              </div>
-              <h3 className="text-lg font-bold text-white">Automated Hardware Telemetry</h3>
-              <p className="text-xs sm:text-sm text-white/70 leading-relaxed">
-                Dedicated Find Hub GPS tags paired with every VIP coach shipment batch for continuous highway checkpoints (Circle, Nsawam, Suhum, Nkawkaw, Konongo, Asafo).
-              </p>
-            </div>
-
-            <div className="p-6 rounded-card bg-white/5 border border-white/10 space-y-2.5">
-              <div className="inline-flex items-center gap-1.5 text-xs font-extrabold text-white/60 uppercase tracking-wider">
-                <MapPin className="w-4 h-4" />
-                <span>Coming soon</span>
-              </div>
-              <h3 className="text-lg font-bold text-white">Nationwide Corridors</h3>
-              <p className="text-xs sm:text-sm text-white/70 leading-relaxed">
-                Expanding WhatsApp-first intercity parcel delivery to Takoradi, Tamale, Sunyani, and Cape Coast terminals.
-              </p>
+                {/* Isometric Parcel Box Wireframe */}
+                <polygon points="130,20 230,65 130,110 30,65" />
+                <polygon points="30,65 130,110 130,185 30,140" />
+                <polygon points="230,65 130,110 130,185 230,140" />
+                {/* Tape strip & shipping label lines */}
+                <line x1="80" y1="42.5" x2="180" y2="87.5" />
+                <line x1="180" y1="87.5" x2="180" y2="122" />
+                <polygon points="65,98 110,118 110,148 65,128" strokeOpacity="0.7" />
+                <line x1="72" y1="110" x2="102" y2="123" strokeOpacity="0.7" />
+                <line x1="72" y1="118" x2="95" y2="128" strokeOpacity="0.7" />
+                {/* Inner structural grid lines */}
+                <line x1="130" y1="20" x2="130" y2="65" strokeDasharray="3 3" strokeOpacity="0.45" />
+                <line x1="55" y1="53" x2="155" y2="98" strokeOpacity="0.35" />
+              </svg>
             </div>
           </div>
 
-          {/* Bottom Call-To-Action Box */}
-          <div className="p-8 sm:p-10 rounded-[24px] bg-white/10 border border-white/15 flex flex-col lg:flex-row items-center justify-between gap-6">
-            <div className="space-y-2 text-center lg:text-left max-w-xl">
-              <h3 className="text-2xl sm:text-3xl font-extrabold text-white">
-                Start using your WhatsApp delivery assistant
-              </h3>
-              <p className="text-xs sm:text-sm text-white/80 leading-relaxed">
-                Ready to send or track a parcel where you already chat? Start a chat with <strong>oura</strong> on WhatsApp today.
-              </p>
-            </div>
-            <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
+          {/* HERO PHOTOGRAPH MOCKUP: Holding phone taking picture of parcel in WhatsApp */}
+          <div className="relative rounded-[28px] sm:rounded-[36px] overflow-hidden shadow-card border border-black/10 bg-[#141414]">
+            <img
+              src="/hero-whatsapp-parcel.jpg"
+              alt="Taking a photo of a parcel inside WhatsApp with oura"
+              className="w-full h-[280px] sm:h-[420px] lg:h-[460px] object-cover object-center"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
+            <div className="absolute bottom-4 left-4 sm:bottom-6 sm:left-6 right-4 flex flex-wrap items-center justify-between gap-2">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/70 backdrop-blur-md text-white text-[11px] font-medium border border-white/15">
+                <span className="w-2 h-2 rounded-full bg-[#25D366]" />
+                <span>Snap parcel in WhatsApp · Instant quote &amp; rider pickup</span>
+              </div>
               <a
                 href={WHATSAPP_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-7 py-4 rounded-pill bg-[#25D366] hover:bg-[#20bd5a] text-ink font-extrabold text-sm shadow-md transition-all"
+                className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-white text-[#0F0F0F] text-[11px] font-bold hover:bg-white/90 transition-colors"
               >
-                <MessageCircle className="w-5 h-5" />
-                <span>Start a chat with oura on WhatsApp</span>
-              </a>
-              <a
-                href="#how-it-works"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-4 rounded-pill bg-white/10 hover:bg-white/20 text-white font-bold text-sm transition-all"
-              >
-                <span>How it Works</span>
+                <span>Open WhatsApp</span>
+                <ArrowRight className="w-3 h-3" />
               </a>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* 6. FOOTER WITH PRIVACY POLICY & TERMS AND CONDITIONS (Like uselebe.com) */}
-      <footer className="bg-white border-t border-line py-12 text-xs text-muted">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {/* Brand Column */}
-            <div className="space-y-3 lg:col-span-2">
-              <div className="flex items-center gap-2.5">
-                <img src="/icon-192.png" alt="oura" className="w-7 h-7 rounded-lg object-cover border border-line" />
-                <span className="text-lg font-extrabold text-ink tracking-tight">oura</span>
+        {/* 2. MINIMALIST 3-COLUMN TIER CARDS (Matches "Customized solutions / By Land, By Air, By Sea") */}
+        <section className="space-y-8">
+          <h2 className="text-2xl sm:text-4xl font-bold tracking-[-0.03em] leading-[1.12] text-[#0F0F0F]">
+            Door-to-door delivery <br />
+            between Accra &amp; Kumasi
+          </h2>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            {/* Tier 1 */}
+            <div className="rounded-[20px] border border-[#0F0F0F]/12 bg-white/15 p-6 space-y-5">
+              <div className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+                Small
               </div>
-              <p className="text-xs text-muted max-w-sm leading-relaxed">
-                Your WhatsApp-first intercity parcel delivery assistant between Accra and Kumasi via VIP Express, powered by live GPS hardware tracking.
-              </p>
-              <div className="pt-1 font-data text-xs font-bold text-ink">
-                WhatsApp Concierge: +233 59 988 2827
+              <div className="space-y-3 pt-1 border-t border-[#0F0F0F]/10">
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider font-semibold text-[#0F0F0F]/45">
+                    Transit Cost
+                  </div>
+                  <div className="text-xs sm:text-sm font-bold text-[#0F0F0F] mt-0.5">
+                    From GHS 45
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider font-semibold text-[#0F0F0F]/45">
+                    Weight
+                  </div>
+                  <div className="text-xs sm:text-sm font-bold text-[#0F0F0F] mt-0.5">
+                    Up to 1 kg
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* Product Links */}
-            <div className="space-y-2.5">
-              <div className="text-xs font-extrabold uppercase tracking-wider text-ink">Learn</div>
-              <ul className="space-y-2 font-medium">
-                <li>
-                  <a href="#how-it-works" className="hover:text-ink transition-colors">
-                    How it Works
-                  </a>
-                </li>
-                <li>
-                  <a href="#features" className="hover:text-ink transition-colors">
-                    Features
-                  </a>
-                </li>
-                <li>
-                  <Link href="/track" className="hover:text-ink transition-colors">
-                    Track a Parcel
-                  </Link>
-                </li>
-                <li>
+            {/* Tier 2 */}
+            <div className="rounded-[20px] border border-[#0F0F0F]/12 bg-white/15 p-6 space-y-5">
+              <div className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+                Medium
+              </div>
+              <div className="space-y-3 pt-1 border-t border-[#0F0F0F]/10">
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider font-semibold text-[#0F0F0F]/45">
+                    Transit Cost
+                  </div>
+                  <div className="text-xs sm:text-sm font-bold text-[#0F0F0F] mt-0.5">
+                    From GHS 70
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider font-semibold text-[#0F0F0F]/45">
+                    Weight
+                  </div>
+                  <div className="text-xs sm:text-sm font-bold text-[#0F0F0F] mt-0.5">
+                    Up to 5 kg
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Tier 3 */}
+            <div className="rounded-[20px] border border-[#0F0F0F]/12 bg-white/15 p-6 space-y-5">
+              <div className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+                Large
+              </div>
+              <div className="space-y-3 pt-1 border-t border-[#0F0F0F]/10">
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider font-semibold text-[#0F0F0F]/45">
+                    Transit Cost
+                  </div>
+                  <div className="text-xs sm:text-sm font-bold text-[#0F0F0F] mt-0.5">
+                    From GHS 110
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider font-semibold text-[#0F0F0F]/45">
+                    Weight
+                  </div>
+                  <div className="text-lg font-bold text-[#0F0F0F] leading-none mt-1">
+                    ∞
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 3. TRACK OR ESTIMATE RIGHT NOW (Matches "Find out the price right now — use our shipping cost calculator") */}
+        <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start pt-2">
+          <div className="lg:col-span-5">
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-[-0.03em] leading-[1.15]">
+              <span className="text-[#0F0F0F]">Track or estimate </span>
+              <span className="text-[#0F0F0F] block">right now —</span>
+              <span className="text-white block">live GPS map &amp;</span>
+              <span className="text-white block">instant calculator</span>
+            </h2>
+          </div>
+
+          <div className="lg:col-span-7 space-y-5">
+            {/* Pill switcher */}
+            <div>
+              <div className="text-[10px] uppercase tracking-wider font-bold text-[#0F0F0F]/50 mb-2">
+                Select Action
+              </div>
+              <div className="grid grid-cols-2 rounded-full border border-[#0F0F0F]/15 p-1 bg-white/20 max-w-md">
+                <button
+                  type="button"
+                  onClick={() => setMode("track")}
+                  className={`py-2 rounded-full text-xs font-semibold transition-all ${
+                    mode === "track"
+                      ? "bg-[#0F0F0F] text-white"
+                      : "text-[#0F0F0F]/70 hover:text-[#0F0F0F]"
+                  }`}
+                >
+                  Track Live Parcel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMode("quote")}
+                  className={`py-2 rounded-full text-xs font-semibold transition-all ${
+                    mode === "quote"
+                      ? "bg-[#0F0F0F] text-white"
+                      : "text-[#0F0F0F]/70 hover:text-[#0F0F0F]"
+                  }`}
+                >
+                  Cost Calculator
+                </button>
+              </div>
+            </div>
+
+            {mode === "track" ? (
+              <form onSubmit={handleTrack} className="space-y-4 max-w-md">
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider font-bold text-[#0F0F0F]/50 mb-1.5">
+                    Booking ID
+                  </div>
+                  <input
+                    type="text"
+                    value={trackingId}
+                    onChange={(e) => setTrackingId(e.target.value)}
+                    placeholder="Enter ID (e.g. H21191059 or H314315796)"
+                    className="w-full px-4 py-3 rounded-full bg-transparent border border-[#0F0F0F]/20 text-xs font-semibold text-[#0F0F0F] placeholder:text-[#0F0F0F]/40 focus:outline-none focus:border-[#0F0F0F]"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="inline-flex items-center justify-between gap-8 px-6 py-3 rounded-full bg-[#0F0F0F]/10 hover:bg-[#0F0F0F] hover:text-white border border-[#0F0F0F]/15 text-xs font-semibold transition-all"
+                >
+                  <span>Open Live Map</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </form>
+            ) : (
+              <div className="space-y-4 max-w-lg">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wider font-bold text-[#0F0F0F]/50 mb-1.5">
+                      From
+                    </div>
+                    <select
+                      value={fromCity}
+                      onChange={(e) => {
+                        setFromCity(e.target.value);
+                        setToCity(e.target.value === "Accra" ? "Kumasi" : "Accra");
+                      }}
+                      className="w-full px-4 py-2.5 rounded-full bg-transparent border border-[#0F0F0F]/20 text-xs font-semibold text-[#0F0F0F] focus:outline-none"
+                    >
+                      <option value="Accra">Accra</option>
+                      <option value="Kumasi">Kumasi</option>
+                    </select>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wider font-bold text-[#0F0F0F]/50 mb-1.5">
+                      To
+                    </div>
+                    <select
+                      value={toCity}
+                      onChange={(e) => {
+                        setToCity(e.target.value);
+                        setFromCity(e.target.value === "Accra" ? "Kumasi" : "Accra");
+                      }}
+                      className="w-full px-4 py-2.5 rounded-full bg-transparent border border-[#0F0F0F]/20 text-xs font-semibold text-[#0F0F0F] focus:outline-none"
+                    >
+                      <option value="Kumasi">Kumasi</option>
+                      <option value="Accra">Accra</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  {(["small", "medium", "large"] as const).map((tier) => (
+                    <button
+                      key={tier}
+                      type="button"
+                      onClick={() => setWeightTier(tier)}
+                      className={`py-2 rounded-full text-xs font-semibold border capitalize transition-all ${
+                        weightTier === tier
+                          ? "bg-[#0F0F0F] text-white border-[#0F0F0F]"
+                          : "border-[#0F0F0F]/20 text-[#0F0F0F]/70 hover:text-[#0F0F0F]"
+                      }`}
+                    >
+                      {tier}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex items-center justify-between pt-1">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wider font-bold text-[#0F0F0F]/50">
+                      Estimated Total (Pickup + VIP + Delivery)
+                    </div>
+                    <div className="text-xl font-extrabold text-[#0F0F0F]">
+                      GHS {estimatedTotal}.00
+                    </div>
+                  </div>
                   <a
                     href={WHATSAPP_URL}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-status-green font-bold hover:underline"
+                    className="inline-flex items-center gap-4 px-6 py-3 rounded-full bg-[#0F0F0F] text-white text-xs font-semibold hover:bg-[#0F0F0F]/85 transition-all"
                   >
-                    Chat on WhatsApp
+                    <span>Book on WhatsApp</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
                   </a>
-                </li>
-              </ul>
-            </div>
-
-            {/* Legal & Compliance Links */}
-            <div className="space-y-2.5">
-              <div className="text-xs font-extrabold uppercase tracking-wider text-ink">
-                Legal & Privacy
+                </div>
               </div>
-              <ul className="space-y-2 font-medium">
-                <li>
-                  <Link href="/privacy" className="hover:text-ink transition-colors">
-                    Privacy Policy
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/terms" className="hover:text-ink transition-colors">
-                    Terms & Conditions
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/data-deletion" className="hover:text-ink transition-colors">
-                    Data Deletion Instructions
-                  </Link>
-                </li>
-              </ul>
+            )}
+          </div>
+        </section>
+
+        {/* 4. HOW IT WORKS — MINIMALIST ACCORDION (Matches Right Page of Reference Image) */}
+        <section id="how-it-works" className="pt-4 scroll-mt-16">
+          <div className="border-t border-[#0F0F0F]/15">
+            {FAQ_ITEMS.map((item, idx) => {
+              const isOpen = openFaq === idx;
+              return (
+                <div key={idx} className="border-b border-[#0F0F0F]/15">
+                  <button
+                    type="button"
+                    onClick={() => setOpenFaq(isOpen ? null : idx)}
+                    className="w-full py-5 flex items-center justify-between text-left gap-4 group"
+                  >
+                    <span className="text-base sm:text-lg font-bold tracking-tight text-[#0F0F0F] group-hover:opacity-75 transition-opacity">
+                      {item.q}
+                    </span>
+                    <span className="text-[#0F0F0F]/70 shrink-0">
+                      {isOpen ? <Minus className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                    </span>
+                  </button>
+                  {isOpen && (
+                    <div className="pb-6 pr-8 text-xs sm:text-sm text-[#0F0F0F]/70 leading-relaxed max-w-2xl">
+                      {item.a}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      </main>
+
+      {/* 5. STARK BLACK MINIMALIST FOOTER (Matches Bottom-Right of Cargo.Town Reference) */}
+      <footer className="bg-[#0F0F0F] text-white py-14 px-6 sm:px-10">
+        <div className="max-w-5xl mx-auto grid grid-cols-2 sm:grid-cols-3 gap-10 text-xs">
+          <div className="space-y-3">
+            <div className="text-[10px] uppercase tracking-widest text-white/40 font-semibold">
+              oura for
             </div>
+            <ul className="space-y-2 text-white/80">
+              <li>Accra ↔ Kumasi</li>
+              <li>Personal Parcels</li>
+              <li>E-Commerce Packages</li>
+              <li>Same-Day VIP Transit</li>
+            </ul>
           </div>
 
-          <div className="pt-8 border-t border-line/70 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div>
-              © {new Date().getFullYear()} All Rights Reserved –{" "}
-              <strong className="text-ink font-extrabold">oura</strong>
+          <div className="space-y-3">
+            <div className="text-[10px] uppercase tracking-widest text-white/40 font-semibold">
+              Company
             </div>
-            <div className="flex items-center gap-5 font-semibold">
-              <Link href="/privacy" className="hover:text-ink transition-colors">
-                Privacy Policy
-              </Link>
-              <Link href="/terms" className="hover:text-ink transition-colors">
-                Terms & Conditions
-              </Link>
-              <Link href="/data-deletion" className="hover:text-ink transition-colors">
-                Data Deletion
-              </Link>
-            </div>
+            <ul className="space-y-2 text-white/80">
+              <li>
+                <a href="#how-it-works" className="hover:text-white transition-colors">
+                  How it works
+                </a>
+              </li>
+              <li>
+                <Link href="/track" className="hover:text-white transition-colors">
+                  Track Parcel
+                </Link>
+              </li>
+              <li>
+                <a
+                  href={WHATSAPP_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-white transition-colors"
+                >
+                  WhatsApp (+233 59 988 2827)
+                </a>
+              </li>
+            </ul>
           </div>
+
+          <div className="space-y-3 col-span-2 sm:col-span-1">
+            <div className="text-[10px] uppercase tracking-widest text-white/40 font-semibold">
+              Terms &amp; Legal
+            </div>
+            <ul className="space-y-2 text-white/80">
+              <li>
+                <Link href="/privacy" className="hover:text-white transition-colors">
+                  Privacy Policy
+                </Link>
+              </li>
+              <li>
+                <Link href="/terms" className="hover:text-white transition-colors">
+                  Terms &amp; Conditions
+                </Link>
+              </li>
+              <li>
+                <Link href="/data-deletion" className="hover:text-white transition-colors">
+                  Data Deletion
+                </Link>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="max-w-5xl mx-auto pt-10 mt-10 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-white/40">
+          <div>© {new Date().getFullYear()} oura. All rights reserved.</div>
+          <div>Accra · Kumasi</div>
         </div>
       </footer>
     </div>
