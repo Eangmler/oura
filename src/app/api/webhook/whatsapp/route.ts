@@ -89,13 +89,15 @@ export async function POST(request: Request) {
 
       // IMPORTANT: Keep @lid or @c.us intact so Green-API can reply to Linked-ID (@lid) and regular (@c.us) chats!
       const senderChatId: string = body.senderData?.chatId || body.senderData?.sender || "";
+      const senderName: string =
+        body.senderData?.senderName || body.senderData?.senderContactName || "";
       const text =
         body.messageData?.textMessageData?.textMessage ||
         body.messageData?.extendedTextMessageData?.text ||
         "";
 
       if (senderChatId && text) {
-        const botReply = await processWhatsAppMessage(senderChatId, text);
+        const botReply = await processWhatsAppMessage(senderChatId, text, senderName);
         return NextResponse.json({
           success: true,
           reply: botReply.message,

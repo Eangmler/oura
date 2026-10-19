@@ -3,7 +3,9 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Package, MapPin, Shield, Menu, X, ArrowRight } from "lucide-react";
+import { Menu, X, MessageCircle, Shield, Package } from "lucide-react";
+
+const WHATSAPP_URL = "https://wa.me/233599882827?text=Hi";
 
 export const Navbar = () => {
   const pathname = usePathname();
@@ -11,107 +13,93 @@ export const Navbar = () => {
 
   const isRep = pathname.startsWith("/rep");
   const isAdmin = pathname.startsWith("/admin");
-  const isBook = pathname.startsWith("/book");
   const isTrack = pathname.startsWith("/track");
-  const isWhatsApp = pathname.startsWith("/whatsapp");
 
   return (
-    <nav className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-line/70">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+    <nav className="sticky top-0 z-40 bg-paper/90 backdrop-blur-md border-b border-line/70">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-18 py-3.5 flex items-center justify-between">
         {/* Brand Logo & Name */}
         <Link href="/" className="flex items-center gap-2.5 group">
           <img
             src="/icon-192.png"
             alt="oura"
-            className="w-8 h-8 rounded-xl object-cover shadow-sm group-hover:scale-105 transition-transform border border-line"
+            className="w-9 h-9 rounded-xl object-cover shadow-sm group-hover:scale-105 transition-transform border border-line"
           />
-          <div className="flex items-center gap-1.5">
-            <span className="text-lg font-extrabold tracking-tight text-ink">oura</span>
-            <span className="hidden sm:inline-block text-[10px] bg-accent/15 text-accent font-semibold px-2 py-0.5 rounded-pill">
-              accra ↔ kumasi VIP
-            </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xl font-extrabold tracking-tight text-ink">oura</span>
+            {(isAdmin || isRep) && (
+              <span className="text-[10px] bg-ink text-white font-bold px-2.5 py-0.5 rounded-pill uppercase tracking-wider">
+                {isAdmin ? "Admin Console" : "Rep Portal"}
+              </span>
+            )}
           </div>
         </Link>
 
-        {/* Center Links (Tablet & Desktop) */}
-        <div className="hidden md:flex items-center gap-1 bg-soft/80 p-1 rounded-pill border border-line/60 text-xs font-semibold">
-          <Link
-            href="/"
-            className={`px-4 py-1.5 rounded-pill transition-all ${
-              pathname === "/" ? "bg-white text-ink shadow-sm font-bold" : "text-muted hover:text-ink"
-            }`}
-          >
-            Home
-          </Link>
-          <Link
-            href="/book"
-            className={`px-4 py-1.5 rounded-pill transition-all ${
-              isBook ? "bg-white text-ink shadow-sm font-bold" : "text-muted hover:text-ink"
-            }`}
-          >
-            Book Delivery
-          </Link>
-          <Link
-            href="/track"
-            className={`px-4 py-1.5 rounded-pill transition-all ${
-              isTrack ? "bg-white text-ink shadow-sm font-bold" : "text-muted hover:text-ink"
-            }`}
-          >
-            Track Parcel
-          </Link>
-          <Link
-            href="/whatsapp"
-            className={`px-4 py-1.5 rounded-pill transition-all flex items-center gap-1.5 ${
-              isWhatsApp
-                ? "bg-[#25D366] text-ink shadow-sm font-extrabold"
-                : "text-status-green hover:text-ink"
-            }`}
-          >
-            <span>💬 WhatsApp Bot</span>
-          </Link>
-        </div>
+        {/* Center Navigation Links (Public Website) */}
+        {!isAdmin && !isRep ? (
+          <div className="hidden md:flex items-center gap-7 text-sm font-semibold text-muted">
+            <a href="/#features" className="hover:text-ink transition-colors">
+              Features
+            </a>
+            <a href="/#how-it-works" className="hover:text-ink transition-colors">
+              How it Works
+            </a>
+            <a href="/#security" className="hover:text-ink transition-colors">
+              Live GPS Security
+            </a>
+            <Link
+              href="/track"
+              className={`transition-colors ${
+                isTrack ? "text-accent font-bold" : "hover:text-ink"
+              }`}
+            >
+              Track Parcel
+            </Link>
+          </div>
+        ) : (
+          <div className="hidden md:flex items-center gap-3 text-xs font-semibold text-muted">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-pill bg-status-green-bg text-status-green font-bold">
+              <span className="w-2 h-2 rounded-full bg-status-green animate-pulse" />
+              WhatsApp Live Sync (+233 59 988 2827)
+            </span>
+          </div>
+        )}
 
-        {/* Right Portal Switcher (Clean, distinct 3 apps) */}
-        <div className="hidden sm:flex items-center gap-2.5">
-          <Link
-            href="/rep"
-            className={`px-3 py-1.5 rounded-pill text-xs font-semibold flex items-center gap-1.5 transition-all ${
-              isRep
-                ? "bg-ink text-white shadow-sm"
-                : "text-muted hover:text-ink hover:bg-soft"
-            }`}
-          >
-            <Package className="w-3.5 h-3.5" />
-            <span>Rep Portal</span>
-          </Link>
-
-          <Link
-            href="/admin"
-            className={`px-3.5 py-1.5 rounded-pill text-xs font-bold flex items-center gap-1.5 transition-all ${
-              isAdmin
-                ? "bg-accent text-white shadow-sm"
-                : "border border-line hover:border-ink/20 text-ink bg-white"
-            }`}
-          >
-            <Shield className="w-3.5 h-3.5" />
-            <span>Admin</span>
-          </Link>
+        {/* Right Primary CTA */}
+        <div className="hidden sm:flex items-center gap-3">
+          {isAdmin || isRep ? (
+            <Link
+              href="/"
+              className="px-4 py-2 rounded-pill text-xs font-bold border border-line bg-white text-ink hover:bg-soft transition-colors"
+            >
+              Public Website
+            </Link>
+          ) : (
+            <a
+              href={WHATSAPP_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-pill bg-[#25D366] hover:bg-[#20bd5a] text-ink font-extrabold text-xs sm:text-sm shadow-sm transition-all hover:scale-[1.02]"
+            >
+              <MessageCircle className="w-4 h-4 fill-ink/10" />
+              <span>Get Started</span>
+            </a>
+          )}
         </div>
 
         {/* Mobile Menu Button */}
         <div className="flex sm:hidden items-center gap-2">
-          <Link
-            href="/whatsapp"
-            className="px-3 py-1.5 bg-[#25D366]/20 text-status-green rounded-pill text-xs font-extrabold"
-          >
-            💬 Bot
-          </Link>
-          <Link
-            href="/book"
-            className="px-3 py-1.5 bg-accent text-white rounded-pill text-xs font-bold"
-          >
-            Book
-          </Link>
+          {!isAdmin && !isRep && (
+            <a
+              href={WHATSAPP_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3.5 py-2 bg-[#25D366] text-ink rounded-pill text-xs font-extrabold flex items-center gap-1.5"
+            >
+              <MessageCircle className="w-3.5 h-3.5" />
+              <span>Chat on WhatsApp</span>
+            </a>
+          )}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="p-2 rounded-lg text-ink hover:bg-soft"
@@ -124,53 +112,47 @@ export const Navbar = () => {
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
-        <div className="sm:hidden border-t border-line bg-white px-5 py-4 space-y-3 animate-in slide-in-from-top-2">
-          <div className="flex flex-col gap-1 text-sm font-semibold">
-            <Link
-              href="/"
+        <div className="sm:hidden border-t border-line bg-white px-5 py-4 space-y-3">
+          <div className="flex flex-col gap-2 text-sm font-semibold">
+            <a
+              href="/#features"
               onClick={() => setMobileMenuOpen(false)}
               className="py-2 text-ink hover:text-accent"
             >
-              Home
-            </Link>
-            <Link
-              href="/book"
+              Features
+            </a>
+            <a
+              href="/#how-it-works"
               onClick={() => setMobileMenuOpen(false)}
               className="py-2 text-ink hover:text-accent"
             >
-              Book Delivery
-            </Link>
+              How it Works
+            </a>
+            <a
+              href="/#security"
+              onClick={() => setMobileMenuOpen(false)}
+              className="py-2 text-ink hover:text-accent"
+            >
+              Live GPS Security
+            </a>
             <Link
               href="/track"
               onClick={() => setMobileMenuOpen(false)}
               className="py-2 text-ink hover:text-accent"
             >
-              Track Package
-            </Link>
-            <Link
-              href="/whatsapp"
-              onClick={() => setMobileMenuOpen(false)}
-              className="py-2 text-status-green font-bold hover:text-accent"
-            >
-              💬 WhatsApp Bot & Notifications
+              Track Parcel
             </Link>
           </div>
-
-          <div className="pt-3 border-t border-line grid grid-cols-2 gap-2">
-            <Link
-              href="/rep"
-              onClick={() => setMobileMenuOpen(false)}
-              className="px-3 py-2.5 rounded-card bg-soft text-ink text-center text-xs font-bold"
+          <div className="pt-2 border-t border-line">
+            <a
+              href={WHATSAPP_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full py-3 rounded-pill bg-[#25D366] text-ink text-center text-xs font-extrabold flex items-center justify-center gap-2"
             >
-              Rep Portal
-            </Link>
-            <Link
-              href="/admin"
-              onClick={() => setMobileMenuOpen(false)}
-              className="px-3 py-2.5 rounded-card bg-ink text-white text-center text-xs font-bold"
-            >
-              Admin Console
-            </Link>
+              <MessageCircle className="w-4 h-4" />
+              <span>Start a chat with oura on WhatsApp</span>
+            </a>
           </div>
         </div>
       )}

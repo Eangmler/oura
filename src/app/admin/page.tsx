@@ -96,13 +96,13 @@ export default function AdminDashboardPage() {
     }
   }, []);
 
-  const loadAllData = () => {
-    setLoading(true);
+  const loadAllData = (silent = false) => {
+    if (!silent) setLoading(true);
     Promise.all([
-      fetch("/api/shipments").then((r) => r.json()),
-      fetch("/api/reps").then((r) => r.json()),
-      fetch("/api/settings").then((r) => r.json()),
-      fetch("/api/trackers").then((r) => r.json()),
+      fetch("/api/shipments", { cache: "no-store" }).then((r) => r.json()),
+      fetch("/api/reps", { cache: "no-store" }).then((r) => r.json()),
+      fetch("/api/settings", { cache: "no-store" }).then((r) => r.json()),
+      fetch("/api/trackers", { cache: "no-store" }).then((r) => r.json()),
     ])
       .then(([shipData, repData, setData, trkData]) => {
         if (shipData.shipments) setShipments(shipData.shipments);
@@ -111,9 +111,11 @@ export default function AdminDashboardPage() {
         if (trkData.trackers) setTrackers(trkData.trackers);
       })
       .catch((e) => console.error(e))
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (!silent) setLoading(false);
+      });
 
-    fetch("/api/pings?shipment_id=H314315796")
+    fetch("/api/pings?shipment_id=H314315796", { cache: "no-store" })
       .then((r) => r.json())
       .then((p) => {
         if (p.latest) setLatestPing(p.latest);
@@ -124,6 +126,8 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     if (adminAuth) {
       loadAllData();
+      const timer = setInterval(() => loadAllData(true), 6000);
+      return () => clearInterval(timer);
     }
   }, [adminAuth]);
 

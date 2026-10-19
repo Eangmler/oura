@@ -3,6 +3,7 @@ import { getSettings } from "@/lib/db/repos/settings";
 import { getLatestPing } from "@/lib/db/repos/tracker-pings";
 import { calculateQuote } from "@/lib/pricing/engine";
 import { dispatchWhatsAppMessage, sendWhatsAppStatusNotification } from "./notifier";
+import { restoreSessionFromGreenApi } from "./green-sync";
 
 export { dispatchWhatsAppMessage, sendWhatsAppStatusNotification };
 
@@ -64,9 +65,19 @@ export interface BotResponse {
  */
 export async function processWhatsAppMessage(
   phone: string,
-  userMessage: string
+  userMessage: string,
+  senderName?: string
 ): Promise<BotResponse> {
   const session = getSession(phone);
+  if (senderName && senderName.trim()) {
+    session.draft.sender_name = senderName.trim();
+  }
+
+  // If this Vercel lambda instance cold-started mid-conversation, recover state from Green-API journal
+  if (session.state === "IDLE") {
+    await restoreSessionFromGreenApi(phone, session);
+  }
+
   const text = userMessage.trim();
   const lower = text.toLowerCase();
   const upper = text.toUpperCase();
@@ -243,15 +254,15 @@ export async function processWhatsAppMessage(
           quantity: 1,
           weight_category: session.draft.weight_category || "medium",
           weight_kg: session.draft.weight_kg || 3.5,
-          sender_name: `WhatsApp Client (${phone})`,
+          sender_name: session.draft.sender_name || `WhatsApp Client (${phone.replace(/@.*$/, "")})`,
           sender_phone: phone,
           recipient_name: recipName,
           recipient_phone: phoneDigits,
           pricing: {
-            pickup_fee: 30,
+            pickup_fee: 40,
             transit_fee: 70,
             delivery_fee: 20,
-            total: session.draft.quote_total || 120,
+            total: session.draft.quote_total || 130,
           },
           currency: "GHS",
         });
@@ -262,8 +273,12 @@ export async function processWhatsAppMessage(
         const reply =
           `🎉 *Booking Confirmed! ID: ${shipment.tracking_id}*\n` +
           `──────────────────\n` +
-          `Please complete your payment via MTN Mobile Money:\n\n` +
-          `💵 *Amount:* GHS ${session.draft.quote_total}.00\n` +
+          `📦 Item: *${shipment.item_description}* (~${shipment.weight_kg}kg, ${shipment.weight_category.toUpperCase()})\n` +
+          `📍 Pickup: ${shipment.origin_address} (${shipment.origin_city})\n` +
+          `🏁 Delivery: ${shipment.destination_address} (${shipment.destination_city})\n` +
+          `👤 Recipient: ${recipName} ${phoneDigits}\n\n` +
+          `Please complete your payment via MTN Mobile Money:\n` +
+          `💵 *Amount:* GHS ${session.draft.quote_total || 130}.00\n` +
           `📱 *MoMo Number:* *${settings.momo_number}*\n` +
           `👤 *Account Name:* ${settings.momo_name}\n` +
           `🔑 *MoMo Reference:* *${shipment.tracking_id}*\n\n` +

@@ -71,22 +71,24 @@ export default function RepDashboardPage() {
   }, []);
 
   const loadData = () => {
-    fetch("/api/shipments")
+    fetch("/api/shipments", { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => {
         if (data.shipments) {
           setShipments(data.shipments);
-          if (!selectedShipment && data.shipments.length > 0) {
-            setSelectedShipment(data.shipments[0]);
-          } else if (selectedShipment) {
-            const updated = data.shipments.find((s: Shipment) => s.id === selectedShipment.id);
-            if (updated) setSelectedShipment(updated);
-          }
+          setSelectedShipment((prev) => {
+            if (!prev && data.shipments.length > 0) return data.shipments[0];
+            if (prev) {
+              const updated = data.shipments.find((s: Shipment) => s.id === prev.id);
+              return updated || prev;
+            }
+            return null;
+          });
         }
       })
       .catch((err) => console.error(err));
 
-    fetch("/api/trackers")
+    fetch("/api/trackers", { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => {
         if (data.trackers) setTrackers(data.trackers);
@@ -97,6 +99,8 @@ export default function RepDashboardPage() {
   useEffect(() => {
     if (rep) {
       loadData();
+      const timer = setInterval(loadData, 6000);
+      return () => clearInterval(timer);
     }
   }, [rep]);
 

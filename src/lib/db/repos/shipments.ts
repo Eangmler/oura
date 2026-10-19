@@ -2,6 +2,7 @@ import { Shipment, ShipmentStatus } from "@/types";
 import { getStore } from "../store";
 import { assignTrackerToShipment, releaseTrackerFromShipment } from "./trackers";
 import { sendWhatsAppStatusNotification } from "@/lib/whatsapp/notifier";
+import { syncShipmentsFromGreenApi } from "@/lib/whatsapp/green-sync";
 
 export function generateTrackingId(originCity: string, destCity: string): string {
   const originCode = originCity.toLowerCase().includes("acc") ? "ACC" : "KSI";
@@ -32,6 +33,7 @@ export async function createShipment(
 }
 
 export async function getShipmentByTrackingId(trackingId: string): Promise<Shipment | null> {
+  await syncShipmentsFromGreenApi();
   const store = getStore();
   const normalized = trackingId.trim().toUpperCase();
   const found = store.shipments.find((s) => s.tracking_id.toUpperCase() === normalized);
@@ -43,6 +45,7 @@ export async function listShipments(filters?: {
   city?: string;
   search?: string;
 }): Promise<Shipment[]> {
+  await syncShipmentsFromGreenApi();
   const store = getStore();
   let list = [...store.shipments];
 
@@ -80,6 +83,7 @@ export async function updateShipmentStatus(
     courier_phone?: string;
   }
 ): Promise<Shipment | null> {
+  await syncShipmentsFromGreenApi();
   const store = getStore();
   const index = store.shipments.findIndex(
     (s) => s.tracking_id.toUpperCase() === trackingId.trim().toUpperCase()
@@ -126,6 +130,7 @@ export async function updateShipmentStatus(
 }
 
 export async function confirmShipmentPayment(trackingId: string): Promise<Shipment | null> {
+  await syncShipmentsFromGreenApi();
   const store = getStore();
   const index = store.shipments.findIndex(
     (s) => s.tracking_id.toUpperCase() === trackingId.trim().toUpperCase()

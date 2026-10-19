@@ -47,9 +47,12 @@ export async function dispatchWhatsAppMessage(
 
     if (isGreenApi) {
       const instanceId = idField.replace(/^green:/, "").trim();
-      // Preserve @lid or @c.us if present; otherwise normalize Ghana phone number to 233...@c.us
+      // Preserve @lid or @c.us if present (even if inside parentheses like "024... (81948059914263@lid)")
       let chatId = toPhone.trim();
-      if (!chatId.includes("@")) {
+      const lidOrCusMatch = chatId.match(/(\d+@(?:lid|c\.us))/i);
+      if (lidOrCusMatch) {
+        chatId = lidOrCusMatch[1];
+      } else if (!chatId.includes("@")) {
         const digitsOnly = chatId.replace(/\D/g, "");
         const normalizedIntl = digitsOnly.startsWith("0")
           ? `233${digitsOnly.slice(1)}`
@@ -154,6 +157,7 @@ export async function dispatchWhatsAppMessage(
  */
 export async function sendWhatsAppStatusNotification(shipment: Shipment): Promise<void> {
   const trackUrl = `https://useoura.com/track/${shipment.tracking_id}`;
+  const tagLine = shipment.tracker_id ? `🏷️ Hardware Tag: *${shipment.tracker_id}*\n` : "";
   let text = "";
 
   switch (shipment.status) {
@@ -161,6 +165,8 @@ export async function sendWhatsAppStatusNotification(shipment: Shipment): Promis
       text =
         `✅ *oura Payment Verified — #${shipment.tracking_id}*\n` +
         `──────────────────\n` +
+        `📦 Booking ID: *${shipment.tracking_id}*\n` +
+        tagLine +
         `We have confirmed your MoMo payment of *GHS ${shipment.pricing?.total || 120}.00* for *${shipment.item_description}*.\n\n` +
         `🚗 *Next Step:* Our pickup rider is being dispatched to *${shipment.origin_address}* (${shipment.origin_city}).\n\n` +
         `🗺️ *Live Tracking Link:*\n${trackUrl}`;
@@ -170,6 +176,8 @@ export async function sendWhatsAppStatusNotification(shipment: Shipment): Promis
       text =
         `🚗 *oura Pickup Complete — #${shipment.tracking_id}*\n` +
         `──────────────────\n` +
+        `📦 Booking ID: *${shipment.tracking_id}*\n` +
+        tagLine +
         `Your parcel (*${shipment.item_description}*) has been picked up by *${shipment.courier?.name || "Ernest Angmler"}* and is heading to the *${shipment.origin_city} VIP Station*.\n\n` +
         `🗺️ *Follow Live Map:*\n${trackUrl}`;
       break;
@@ -178,6 +186,8 @@ export async function sendWhatsAppStatusNotification(shipment: Shipment): Promis
       text =
         `🏢 *oura Terminal Check-In — #${shipment.tracking_id}*\n` +
         `──────────────────\n` +
+        `📦 Booking ID: *${shipment.tracking_id}*\n` +
+        tagLine +
         `Your parcel has arrived at the *${shipment.origin_city} VIP Express Terminal* and is being loaded onto the next coach to *${shipment.destination_city}*.\n\n` +
         `🗺️ *Follow Live Map:*\n${trackUrl}`;
       break;
@@ -197,6 +207,8 @@ export async function sendWhatsAppStatusNotification(shipment: Shipment): Promis
       text =
         `🏁 *oura Arrival Alert — Parcel in ${shipment.destination_city}!*\n` +
         `──────────────────\n` +
+        `📦 Booking ID: *${shipment.tracking_id}*\n` +
+        tagLine +
         `Great news! Your parcel (*#${shipment.tracking_id} — ${shipment.item_description}*) has safely arrived at the *${shipment.destination_city} VIP Terminal*.\n\n` +
         `🚚 Our local rep is preparing final delivery to *${shipment.destination_address}*.\n\n` +
         `🗺️ *View Arrival Status:*\n${trackUrl}`;
@@ -206,6 +218,7 @@ export async function sendWhatsAppStatusNotification(shipment: Shipment): Promis
       text =
         `🎉 *oura Delivered — #${shipment.tracking_id}*\n` +
         `──────────────────\n` +
+        `📦 Booking ID: *${shipment.tracking_id}*\n` +
         `Your parcel (*${shipment.item_description}*) has been delivered to *${shipment.recipient_name}* in *${shipment.destination_city}*!\n\n` +
         `Thank you for shipping with *oura*. Reply *HI* anytime to book your next delivery!`;
       break;
