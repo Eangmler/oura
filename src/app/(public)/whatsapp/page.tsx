@@ -353,7 +353,7 @@ export default function WhatsAppSimulatorPage() {
                   </div>
                   <div className="flex items-center justify-between gap-2">
                     <code className="text-[11px] font-data font-bold text-ink truncate">
-                      https://oura-psi.vercel.app/api/webhook/whatsapp
+                      https://oura-gold.vercel.app/api/webhook/whatsapp
                     </code>
                     <button
                       type="button"
