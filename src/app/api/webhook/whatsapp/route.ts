@@ -16,6 +16,17 @@ export async function GET(request: Request) {
     return new Response(challenge, { status: 200 });
   }
 
+  if (searchParams.get("test_phone")) {
+    const testPhone = searchParams.get("test_phone")!;
+    const testMsg = searchParams.get("test_msg") || "Hi";
+    const botReply = await processWhatsAppMessage(testPhone, testMsg);
+    return NextResponse.json({
+      success: true,
+      reply: botReply.message,
+      delivery_status: botReply.delivery_status,
+    });
+  }
+
   if (searchParams.get("logs") === "true") {
     const store = getStore();
     const settings = await getSettings();
