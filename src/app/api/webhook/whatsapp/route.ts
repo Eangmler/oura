@@ -23,10 +23,11 @@ export async function GET(request: Request) {
     });
   }
 
-  return new Response("Forbidden", { status: 403 });
+  return new Response("oura WhatsApp Webhook Active", { status: 200 });
 }
 
-// POST for incoming user messages (both real Meta Cloud API webhook & Live Simulator)
+// POST for incoming user messages:
+// Supports (1) Meta Cloud API, (2) Green-API Instant QR-Code Bridge, and (3) Built-in Web Simulator
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -49,7 +50,26 @@ export async function POST(request: Request) {
       });
     }
 
-    // 2. Direct testing / simulator payload support: { phone, message }
+    // 2. Parse Green-API Instant QR-Code Bridge payload (bypasses Meta 5-day review!)
+    if (body.typeWebhook === "incomingMessageReceived") {
+      const senderChatId: string = body.senderData?.chatId || "";
+      const fromPhone = senderChatId.replace("@c.us", "");
+      const text =
+        body.messageData?.textMessageData?.textMessage ||
+        body.messageData?.extendedTextMessageData?.text ||
+        "";
+
+      if (fromPhone && text) {
+        const botReply = await processWhatsAppMessage(fromPhone, text);
+        return NextResponse.json({
+          success: true,
+          reply: botReply.message,
+          delivery_status: botReply.delivery_status,
+        });
+      }
+    }
+
+    // 3. Direct testing / simulator payload support: { phone, message }
     if (body.phone && body.message) {
       const botReply = await processWhatsAppMessage(body.phone, body.message);
       const store = getStore();

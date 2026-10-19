@@ -3,8 +3,10 @@ import { getStore } from "@/lib/db/store";
 import { Shipment, WhatsAppMessageLog } from "@/types";
 
 /**
- * Helper to send a message via Meta WhatsApp Cloud API (if configured)
- * AND record it in our in-memory WhatsApp message log for live testing.
+ * Helper to send a message via:
+ * 1) Meta WhatsApp Cloud API (if Meta Phone Number ID + Token are set)
+ * 2) OR Green-API Instant QR-Code Bridge (if Green-API Instance ID + Token are set — bypasses Meta 5-day review!)
+ * 3) AND records it in our in-memory WhatsApp message log for live testing at https://useoura.com/whatsapp
  */
 export async function dispatchWhatsAppMessage(
   toPhone: string,
@@ -16,38 +18,63 @@ export async function dispatchWhatsAppMessage(
   const settings = await getSettings();
   let deliveryStatus: "sent_cloud_api" | "logged_sandbox" = "logged_sandbox";
 
-  // If real Meta Cloud API token + Phone Number ID are configured, send live over WhatsApp!
-  if (
-    direction !== "inbound" &&
-    settings.whatsapp_enabled &&
-    settings.whatsapp_token &&
-    settings.whatsapp_phone_number_id
-  ) {
-    try {
-      const normalizedTo = toPhone.startsWith("0")
-        ? `233${toPhone.slice(1)}`
-        : toPhone.replace(/^\+/, "");
-      const res = await fetch(
-        `https://graph.facebook.com/v19.0/${settings.whatsapp_phone_number_id}/messages`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${settings.whatsapp_token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            messaging_product: "whatsapp",
-            to: normalizedTo,
-            type: "text",
-            text: { preview_url: true, body: text },
-          }),
+  const digitsOnly = toPhone.replace(/\D/g, "");
+  const normalizedIntl = digitsOnly.startsWith("0")
+    ? `233${digitsOnly.slice(1)}`
+    : digitsOnly.startsWith("233")
+    ? digitsOnly
+    : `233${digitsOnly}`;
+
+  if (direction !== "inbound" && settings.whatsapp_enabled && settings.whatsapp_token) {
+    const idField = (settings.whatsapp_phone_number_id || "").trim();
+
+    // Mode A: Green-API QR-Code Bridge (Instance IDs are 10 digits starting with 110... or 710...)
+    // If user entered a Green-API Instance ID (or prefix "green:"), send via Green-API QR Bridge!
+    if (idField.startsWith("710") || idField.startsWith("110") || idField.startsWith("green:")) {
+      const instanceId = idField.replace(/^green:/, "").trim();
+      try {
+        const res = await fetch(
+          `https://api.green-api.com/waInstance${instanceId}/sendMessage/${settings.whatsapp_token.trim()}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chatId: `${normalizedIntl}@c.us`,
+              message: text,
+            }),
+          }
+        );
+        if (res.ok) {
+          deliveryStatus = "sent_cloud_api";
         }
-      );
-      if (res.ok) {
-        deliveryStatus = "sent_cloud_api";
+      } catch (e) {
+        console.error("[Green-API QR Bridge Send Error]:", e);
       }
-    } catch (e) {
-      console.error("[Meta Cloud API Send Error]:", e);
+    } else if (idField) {
+      // Mode B: Official Meta WhatsApp Cloud API
+      try {
+        const res = await fetch(
+          `https://graph.facebook.com/v19.0/${idField}/messages`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${settings.whatsapp_token.trim()}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              messaging_product: "whatsapp",
+              to: normalizedIntl,
+              type: "text",
+              text: { preview_url: true, body: text },
+            }),
+          }
+        );
+        if (res.ok) {
+          deliveryStatus = "sent_cloud_api";
+        }
+      } catch (e) {
+        console.error("[Meta Cloud API Send Error]:", e);
+      }
     }
   }
 
