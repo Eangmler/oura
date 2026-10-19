@@ -1,15 +1,16 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowRight, Plus, Minus, Package } from "lucide-react";
+import { ArrowRight, Plus, Minus } from "lucide-react";
+import { OuraSettings } from "@/types";
 
 const WHATSAPP_URL = "https://wa.me/233599882827?text=Hi";
 
 const FAQ_ITEMS = [
   {
     q: "How does oura work?",
-    a: "Tap 'Chat on WhatsApp', take a photo of your parcel (or type what you're sending), and drop your pickup and delivery locations. oura replies with an instant price, you approve via Mobile Money, and our rider picks it up from your door.",
+    a: "Tap 'Chat with oura', take a photo of your parcel (or type what you're sending), and drop your pickup and delivery locations. oura replies with an instant price, you approve via Mobile Money, and our rider picks it up from your door.",
   },
   {
     q: "How do we deliver between Accra & Kumasi?",
@@ -35,10 +36,36 @@ export default function HomePage() {
   const [trackingId, setTrackingId] = useState("");
   const [fromCity, setFromCity] = useState("Accra");
   const [toCity, setToCity] = useState("Kumasi");
-  const [weightTier, setWeightTier] = useState<"small" | "medium" | "large">("medium");
+  const [weightTier, setWeightTier] = useState<"small" | "medium" | "large" | "oversized">("medium");
+  const [settings, setSettings] = useState<OuraSettings | null>(null);
 
-  const estimatedTotal =
-    weightTier === "small" ? 105 : weightTier === "medium" ? 130 : 170;
+  useEffect(() => {
+    const loadRates = () => {
+      fetch("/api/settings", { cache: "no-store" })
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.settings) setSettings(d.settings);
+        })
+        .catch(() => {});
+    };
+    loadRates();
+    const interval = setInterval(loadRates, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const accraKumasiRates = settings?.rates?.accra_kumasi || {
+    small: 45,
+    medium: 70,
+    large: 110,
+    oversized: 180,
+  };
+  const kumasiAccraRates = settings?.rates?.kumasi_accra || accraKumasiRates;
+  const activeRouteRates = fromCity === "Accra" ? accraKumasiRates : kumasiAccraRates;
+
+  const pickupFee = settings?.rates?.pickup_zones?.zone_b ?? 30;
+  const deliveryFee = settings?.rates?.delivery_zones?.zone_a ?? 20;
+  const activeTransitFee = activeRouteRates[weightTier] ?? 70;
+  const estimatedTotal = pickupFee + activeTransitFee + deliveryFee;
 
   const handleTrack = (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,11 +76,15 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-[#DFDFE1] text-[#0F0F0F] flex flex-col font-body selection:bg-[#0F0F0F] selection:text-white scroll-smooth">
-      {/* MINIMALIST TOP BAR (Matches Cargo.Town top-left mark) */}
+      {/* MINIMALIST TOP BAR WITH ORIGINAL OURA ICON */}
       <header className="max-w-5xl w-full mx-auto px-6 sm:px-10 pt-7 pb-4 flex items-center justify-between">
-        <Link href="/" className="inline-flex items-center gap-2 group">
-          <Package className="w-4 h-4 text-[#0F0F0F] stroke-[2.2]" />
-          <span className="text-sm font-bold tracking-tight text-[#0F0F0F]">oura</span>
+        <Link href="/" className="inline-flex items-center gap-2.5 group">
+          <img
+            src="/icon-192.png"
+            alt="oura"
+            className="w-7 h-7 rounded-lg object-cover shadow-sm"
+          />
+          <span className="text-base font-extrabold tracking-tight text-[#0F0F0F]">oura</span>
         </Link>
 
         <div className="flex items-center gap-6 text-xs font-semibold text-[#0F0F0F]/70">
@@ -114,7 +145,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Right Minimalist White Wireframe Parcel Illustration (Matches Cargo.Town wireframe art) */}
+            {/* Right Minimalist White Wireframe Parcel Illustration */}
             <div className="hidden lg:flex lg:col-span-4 justify-end items-start pt-2 pointer-events-none select-none">
               <svg
                 viewBox="0 0 260 200"
@@ -138,7 +169,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* HERO PHOTOGRAPH MOCKUP: Holding phone taking picture of parcel in WhatsApp */}
+          {/* HERO PHOTOGRAPH MOCKUP: Black person's hands holding phone taking picture of parcel in WhatsApp with oura header */}
           <div className="relative rounded-[28px] sm:rounded-[36px] overflow-hidden shadow-card border border-black/10 bg-[#141414]">
             <img
               src="/hero-whatsapp-parcel.jpg"
@@ -148,7 +179,7 @@ export default function HomePage() {
             <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
             <div className="absolute bottom-4 left-4 sm:bottom-6 sm:left-6 right-4 flex flex-wrap items-center justify-between gap-2">
               <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/70 backdrop-blur-md text-white text-[11px] font-medium border border-white/15">
-                <span className="w-2 h-2 rounded-full bg-[#25D366]" />
+                <img src="/icon-192.png" alt="oura" className="w-4 h-4 rounded-sm" />
                 <span>Snap parcel in WhatsApp · Instant quote &amp; rider pickup</span>
               </div>
               <a
@@ -164,7 +195,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* 2. MINIMALIST 3-COLUMN TIER CARDS (Matches "Customized solutions / By Land, By Air, By Sea") */}
+        {/* 2. MINIMALIST 3-COLUMN TIER CARDS (Synced Live with Admin Rate Card) */}
         <section className="space-y-8">
           <h2 className="text-2xl sm:text-4xl font-bold tracking-[-0.03em] leading-[1.12] text-[#0F0F0F]">
             Door-to-door delivery <br />
@@ -172,7 +203,7 @@ export default function HomePage() {
           </h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-            {/* Tier 1 */}
+            {/* Tier 1: Small */}
             <div className="rounded-[20px] border border-[#0F0F0F]/12 bg-white/15 p-6 space-y-5">
               <div className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
                 Small
@@ -183,7 +214,10 @@ export default function HomePage() {
                     Transit Cost
                   </div>
                   <div className="text-xs sm:text-sm font-bold text-[#0F0F0F] mt-0.5">
-                    From GHS 45
+                    From GHS {accraKumasiRates.small}
+                  </div>
+                  <div className="text-[11px] text-[#0F0F0F]/60">
+                    Door-to-door total: GHS {pickupFee + accraKumasiRates.small + deliveryFee}
                   </div>
                 </div>
                 <div>
@@ -197,7 +231,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Tier 2 */}
+            {/* Tier 2: Medium */}
             <div className="rounded-[20px] border border-[#0F0F0F]/12 bg-white/15 p-6 space-y-5">
               <div className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
                 Medium
@@ -208,7 +242,10 @@ export default function HomePage() {
                     Transit Cost
                   </div>
                   <div className="text-xs sm:text-sm font-bold text-[#0F0F0F] mt-0.5">
-                    From GHS 70
+                    From GHS {accraKumasiRates.medium}
+                  </div>
+                  <div className="text-[11px] text-[#0F0F0F]/60">
+                    Door-to-door total: GHS {pickupFee + accraKumasiRates.medium + deliveryFee}
                   </div>
                 </div>
                 <div>
@@ -222,7 +259,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Tier 3 */}
+            {/* Tier 3: Large */}
             <div className="rounded-[20px] border border-[#0F0F0F]/12 bg-white/15 p-6 space-y-5">
               <div className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
                 Large
@@ -233,7 +270,10 @@ export default function HomePage() {
                     Transit Cost
                   </div>
                   <div className="text-xs sm:text-sm font-bold text-[#0F0F0F] mt-0.5">
-                    From GHS 110
+                    From GHS {accraKumasiRates.large}
+                  </div>
+                  <div className="text-[11px] text-[#0F0F0F]/60">
+                    Door-to-door total: GHS {pickupFee + accraKumasiRates.large + deliveryFee}
                   </div>
                 </div>
                 <div>
@@ -249,7 +289,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* 3. TRACK OR ESTIMATE RIGHT NOW (Matches "Find out the price right now — use our shipping cost calculator") */}
+        {/* 3. TRACK OR ESTIMATE RIGHT NOW */}
         <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start pt-2">
           <div className="lg:col-span-5">
             <h2 className="text-2xl sm:text-3xl font-bold tracking-[-0.03em] leading-[1.15]">
@@ -351,8 +391,8 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2">
-                  {(["small", "medium", "large"] as const).map((tier) => (
+                <div className="grid grid-cols-4 gap-2">
+                  {(["small", "medium", "large", "oversized"] as const).map((tier) => (
                     <button
                       key={tier}
                       type="button"
@@ -368,10 +408,10 @@ export default function HomePage() {
                   ))}
                 </div>
 
-                <div className="flex items-center justify-between pt-1">
+                <div className="flex flex-wrap items-center justify-between gap-4 pt-1">
                   <div>
                     <div className="text-[10px] uppercase tracking-wider font-bold text-[#0F0F0F]/50">
-                      Estimated Total (Pickup + VIP + Delivery)
+                      Pickup (GHS {pickupFee}) + VIP Transit (GHS {activeTransitFee}) + Delivery (GHS {deliveryFee})
                     </div>
                     <div className="text-xl font-extrabold text-[#0F0F0F]">
                       GHS {estimatedTotal}.00
@@ -392,7 +432,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* 4. HOW IT WORKS — MINIMALIST ACCORDION (Matches Right Page of Reference Image) */}
+        {/* 4. HOW IT WORKS — MINIMALIST ACCORDION */}
         <section id="how-it-works" className="pt-4 scroll-mt-16">
           <div className="border-t border-[#0F0F0F]/15">
             {FAQ_ITEMS.map((item, idx) => {
@@ -423,12 +463,13 @@ export default function HomePage() {
         </section>
       </main>
 
-      {/* 5. STARK BLACK MINIMALIST FOOTER (Matches Bottom-Right of Cargo.Town Reference) */}
+      {/* 5. STARK BLACK MINIMALIST FOOTER */}
       <footer className="bg-[#0F0F0F] text-white py-14 px-6 sm:px-10">
         <div className="max-w-5xl mx-auto grid grid-cols-2 sm:grid-cols-3 gap-10 text-xs">
           <div className="space-y-3">
-            <div className="text-[10px] uppercase tracking-widest text-white/40 font-semibold">
-              oura for
+            <div className="inline-flex items-center gap-2">
+              <img src="/icon-192.png" alt="oura" className="w-5 h-5 rounded-md" />
+              <span className="text-xs font-extrabold tracking-tight text-white">oura</span>
             </div>
             <ul className="space-y-2 text-white/80">
               <li>Accra ↔ Kumasi</li>

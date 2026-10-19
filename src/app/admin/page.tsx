@@ -58,7 +58,7 @@ export default function AdminDashboardPage() {
   const [authError, setAuthError] = useState("");
 
   const [activeTab, setActiveTab] = useState<
-    "overview" | "map" | "trackers" | "shipments" | "reps" | "settings"
+    "overview" | "pricing" | "map" | "trackers" | "shipments" | "reps" | "settings"
   >("overview");
 
   const [shipments, setShipments] = useState<Shipment[]>([]);
@@ -423,6 +423,7 @@ export default function AdminDashboardPage() {
         <div className="flex bg-white p-1.5 rounded-card text-xs font-semibold border border-line shadow-subtle overflow-x-auto">
           {[
             { id: "overview", label: "KPI Overview" },
+            { id: "pricing", label: "💰 Pricing & Rates" },
             { id: "map", label: "Live Highway Map" },
             { id: "trackers", label: `Hardware Trackers (${trackers.length})` },
             { id: "shipments", label: `Shipments Ledger (${shipments.length})` },
@@ -534,6 +535,248 @@ export default function AdminDashboardPage() {
               </Card>
             </div>
           </div>
+        )}
+
+        {/* ── TAB 1B: DEDICATED PRICING & RATE CARD (Accountant & Admin Console) ─ */}
+        {activeTab === "pricing" && settings && (
+          <form onSubmit={handleSaveSettings} className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-bold text-ink flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-accent" />
+                  <span>Live Rate Card &amp; Pricing Engine (Accountant Console)</span>
+                </h2>
+                <p className="text-xs text-muted">
+                  Changes saved here sync immediately to the public website (<strong>useoura.com</strong>) and the live <strong>WhatsApp Chatbot</strong> (+233 59 988 2827).
+                </p>
+              </div>
+              <Button type="submit" disabled={savingSettings} size="md" className="flex items-center gap-2 shrink-0">
+                <Save className="w-4 h-4" />
+                {savingSettings ? "Publishing Live Rates..." : "Save & Publish Live Rates"}
+              </Button>
+            </div>
+
+            {saveToast && (
+              <div className="p-4 rounded-card bg-status-green-bg text-status-green text-xs font-bold flex items-center gap-2">
+                <CheckCircle className="w-5 h-5" />
+                Live Rate Card published! Both useoura.com and the WhatsApp Chatbot are now quoting your updated prices.
+              </div>
+            )}
+
+            <div className="grid lg:grid-cols-2 gap-6">
+              {/* Accra -> Kumasi Transit Tiers */}
+              <Card className="p-6 bg-white border border-line shadow-card space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-sm font-extrabold text-ink">Accra ➔ Kumasi VIP Transit Fee (GHS)</div>
+                    <div className="text-[11px] text-muted">Line-haul coach fee by parcel weight category</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSettings({
+                        ...settings,
+                        rates: {
+                          ...settings.rates,
+                          kumasi_accra: { ...settings.rates.accra_kumasi },
+                        },
+                      })
+                    }
+                    className="text-[11px] font-bold text-accent hover:underline"
+                  >
+                    Copy to Kumasi ➔ Accra
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 text-xs">
+                  {(
+                    [
+                      { key: "small", label: "Small (< 1 kg)", desc: "Phones, documents, keys, envelopes" },
+                      { key: "medium", label: "Medium (1 – 5 kg)", desc: "Laptops, shoe boxes, clothes bundle" },
+                      { key: "large", label: "Large (5 – 20 kg)", desc: "Monitors, cartons, microwaves, luggage" },
+                      { key: "oversized", label: "Oversized (20 kg+)", desc: "Appliances, engines, bulk sacks" },
+                    ] as const
+                  ).map((tier) => (
+                    <div key={tier.key} className="p-3 rounded-lg bg-soft border border-line space-y-1">
+                      <label className="text-xs font-bold text-ink block">{tier.label}</label>
+                      <div className="text-[10px] text-muted">{tier.desc}</div>
+                      <div className="flex items-center gap-1.5 pt-1">
+                        <span className="text-xs font-bold text-muted">GHS</span>
+                        <input
+                          type="number"
+                          min={0}
+                          value={settings.rates.accra_kumasi[tier.key]}
+                          onChange={(e) => {
+                            const val = Number(e.target.value);
+                            setSettings({
+                              ...settings,
+                              rates: {
+                                ...settings.rates,
+                                accra_kumasi: {
+                                  ...settings.rates.accra_kumasi,
+                                  [tier.key]: val,
+                                },
+                                kumasi_accra: {
+                                  ...settings.rates.kumasi_accra,
+                                  [tier.key]: val,
+                                },
+                              },
+                            });
+                          }}
+                          className="w-full px-3 py-2 rounded-lg border border-line bg-white text-sm font-extrabold font-data text-ink"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+
+              {/* Kumasi -> Accra Transit Tiers + Doorstep Pickup/Delivery */}
+              <div className="space-y-6">
+                <Card className="p-6 bg-white border border-line shadow-card space-y-4">
+                  <div>
+                    <div className="text-sm font-extrabold text-ink">Doorstep Rider Pickup &amp; Delivery Fees (GHS)</div>
+                    <div className="text-[11px] text-muted">
+                      Added to the VIP transit fee to form the customer&apos;s all-inclusive door-to-door quote
+                    </div>
+                  </div>
+
+                  <div className="grid sm:grid-cols-2 gap-4 text-xs">
+                    <div className="p-3.5 rounded-lg bg-soft border border-line space-y-1">
+                      <label className="text-xs font-bold text-ink block">Origin Doorstep Pickup Fee</label>
+                      <div className="text-[10px] text-muted">Rider collection from sender&apos;s location to VIP terminal</div>
+                      <div className="flex items-center gap-1.5 pt-1">
+                        <span className="text-xs font-bold text-muted">GHS</span>
+                        <input
+                          type="number"
+                          min={0}
+                          value={settings.rates.pickup_zones.zone_b}
+                          onChange={(e) =>
+                            setSettings({
+                              ...settings,
+                              rates: {
+                                ...settings.rates,
+                                pickup_zones: {
+                                  ...settings.rates.pickup_zones,
+                                  zone_b: Number(e.target.value),
+                                },
+                              },
+                            })
+                          }
+                          className="w-full px-3 py-2 rounded-lg border border-line bg-white text-sm font-extrabold font-data text-ink"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="p-3.5 rounded-lg bg-soft border border-line space-y-1">
+                      <label className="text-xs font-bold text-ink block">Destination Doorstep Delivery Fee</label>
+                      <div className="text-[10px] text-muted">Rider drop-off from VIP terminal to recipient&apos;s address</div>
+                      <div className="flex items-center gap-1.5 pt-1">
+                        <span className="text-xs font-bold text-muted">GHS</span>
+                        <input
+                          type="number"
+                          min={0}
+                          value={settings.rates.delivery_zones.zone_a}
+                          onChange={(e) =>
+                            setSettings({
+                              ...settings,
+                              rates: {
+                                ...settings.rates,
+                                delivery_zones: {
+                                  ...settings.rates.delivery_zones,
+                                  zone_a: Number(e.target.value),
+                                },
+                              },
+                            })
+                          }
+                          className="w-full px-3 py-2 rounded-lg border border-line bg-white text-sm font-extrabold font-data text-ink"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+
+                {/* Kumasi -> Accra Specific Overrides */}
+                <Card className="p-6 bg-white border border-line shadow-card space-y-3">
+                  <div>
+                    <div className="text-sm font-extrabold text-ink">Kumasi ➔ Accra VIP Transit Fee (GHS)</div>
+                    <div className="text-[11px] text-muted">
+                      Automatically mirrors Accra ➔ Kumasi unless you set a custom return rate below
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                    {(["small", "medium", "large", "oversized"] as const).map((tier) => (
+                      <div key={tier}>
+                        <label className="text-[11px] font-semibold text-muted capitalize">{tier}</label>
+                        <input
+                          type="number"
+                          min={0}
+                          value={settings.rates.kumasi_accra[tier]}
+                          onChange={(e) =>
+                            setSettings({
+                              ...settings,
+                              rates: {
+                                ...settings.rates,
+                                kumasi_accra: {
+                                  ...settings.rates.kumasi_accra,
+                                  [tier]: Number(e.target.value),
+                                },
+                              },
+                            })
+                          }
+                          className="w-full px-3 py-2 rounded-lg border border-line bg-soft text-xs font-bold font-data mt-1"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              </div>
+            </div>
+
+            {/* Live End-to-End Customer Quote Preview */}
+            <Card className="p-6 bg-ink text-white space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <div className="text-xs font-extrabold uppercase tracking-wider text-accent">
+                    Live Customer Quote Preview (Website + WhatsApp Bot)
+                  </div>
+                  <p className="text-xs text-white/75">
+                    This is the exact all-inclusive total (Pickup + VIP Transit + Delivery) your customers see on{" "}
+                    <strong>useoura.com</strong> and inside <strong>WhatsApp</strong>:
+                  </p>
+                </div>
+                <Button type="submit" disabled={savingSettings} size="sm" className="bg-accent hover:bg-accent-dark text-white">
+                  <Save className="w-3.5 h-3.5 mr-1.5" />
+                  {savingSettings ? "Saving..." : "Publish Changes Now"}
+                </Button>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-1">
+                {(
+                  [
+                    { key: "small", label: "Small (<1kg)" },
+                    { key: "medium", label: "Medium (1-5kg)" },
+                    { key: "large", label: "Large (5-20kg)" },
+                    { key: "oversized", label: "Oversized (20kg+)" },
+                  ] as const
+                ).map((t) => {
+                  const pFee = settings.rates.pickup_zones.zone_b || 0;
+                  const tFee = settings.rates.accra_kumasi[t.key] || 0;
+                  const dFee = settings.rates.delivery_zones.zone_a || 0;
+                  const tot = pFee + tFee + dFee;
+                  return (
+                    <div key={t.key} className="p-4 rounded-xl bg-white/10 border border-white/15 space-y-1.5">
+                      <div className="text-xs font-bold text-white/70">{t.label}</div>
+                      <div className="text-xl font-extrabold font-data text-white">GHS {tot}.00</div>
+                      <div className="text-[10px] text-white/60 font-data">
+                        Pickup {pFee} + VIP {tFee} + Delivery {dFee}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+          </form>
         )}
 
         {/* ── TAB 2: LIVE HIGHWAY MAP (Dedicated Substantial Operations View) ─ */}

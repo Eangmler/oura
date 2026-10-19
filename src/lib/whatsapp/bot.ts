@@ -3,7 +3,7 @@ import { getSettings } from "@/lib/db/repos/settings";
 import { getLatestPing } from "@/lib/db/repos/tracker-pings";
 import { calculateQuote } from "@/lib/pricing/engine";
 import { dispatchWhatsAppMessage, sendWhatsAppStatusNotification } from "./notifier";
-import { restoreSessionFromGreenApi } from "./green-sync";
+import { restoreSessionFromGreenApi, syncShipmentsFromGreenApi } from "./green-sync";
 
 export { dispatchWhatsAppMessage, sendWhatsAppStatusNotification };
 
@@ -29,6 +29,9 @@ export interface BotSession {
     item_description?: string;
     weight_category?: "small" | "medium" | "large" | "oversized";
     weight_kg?: number;
+    pickup_fee?: number;
+    transit_fee?: number;
+    delivery_fee?: number;
     quote_total?: number;
     sender_name?: string;
     tracking_id?: string;
@@ -72,6 +75,9 @@ export async function processWhatsAppMessage(
   if (senderName && senderName.trim()) {
     session.draft.sender_name = senderName.trim();
   }
+
+  // Ensure latest Admin rate card & shipments are synced before quoting or responding
+  await syncShipmentsFromGreenApi();
 
   // If this Vercel lambda instance cold-started mid-conversation, recover state from Green-API journal
   if (session.state === "IDLE") {
@@ -218,6 +224,9 @@ export async function processWhatsAppMessage(
 
       session.draft.weight_category = quote.weight_category;
       session.draft.weight_kg = quote.estimated_kg;
+      session.draft.pickup_fee = quote.pricing.pickup_fee;
+      session.draft.transit_fee = quote.pricing.transit_fee;
+      session.draft.delivery_fee = quote.pricing.delivery_fee;
       session.draft.quote_total = quote.pricing.total;
       session.state = "AWAITING_CONFIRMATION";
 
@@ -244,6 +253,23 @@ export async function processWhatsAppMessage(
         const recipName =
           (session.draft.recipient_phone || "Recipient").replace(/\d+/g, "").trim() || "Recipient";
 
+        const liveQuote = await calculateQuote(
+          {
+            origin_city: session.draft.origin_city,
+            destination_city: session.draft.destination_city,
+            item_description: session.draft.item_description || "Parcel",
+            user_selected_category: session.draft.weight_category,
+          },
+          settings
+        );
+
+        const finalPricing = {
+          pickup_fee: session.draft.pickup_fee ?? liveQuote.pricing.pickup_fee,
+          transit_fee: session.draft.transit_fee ?? liveQuote.pricing.transit_fee,
+          delivery_fee: session.draft.delivery_fee ?? liveQuote.pricing.delivery_fee,
+          total: session.draft.quote_total ?? liveQuote.pricing.total,
+        };
+
         const shipment = await createShipment({
           status: "pending_payment",
           origin_city: session.draft.origin_city,
@@ -252,18 +278,13 @@ export async function processWhatsAppMessage(
           destination_address: session.draft.destination_address || `${session.draft.destination_city} Central`,
           item_description: session.draft.item_description || "Parcel",
           quantity: 1,
-          weight_category: session.draft.weight_category || "medium",
-          weight_kg: session.draft.weight_kg || 3.5,
+          weight_category: session.draft.weight_category || liveQuote.weight_category,
+          weight_kg: session.draft.weight_kg || liveQuote.estimated_kg,
           sender_name: session.draft.sender_name || `WhatsApp Client (${phone.replace(/@.*$/, "")})`,
           sender_phone: phone,
           recipient_name: recipName,
           recipient_phone: phoneDigits,
-          pricing: {
-            pickup_fee: 40,
-            transit_fee: 70,
-            delivery_fee: 20,
-            total: session.draft.quote_total || 130,
-          },
+          pricing: finalPricing,
           currency: "GHS",
         });
 
@@ -277,8 +298,12 @@ export async function processWhatsAppMessage(
           `📍 Pickup: ${shipment.origin_address} (${shipment.origin_city})\n` +
           `🏁 Delivery: ${shipment.destination_address} (${shipment.destination_city})\n` +
           `👤 Recipient: ${recipName} ${phoneDigits}\n\n` +
+          `💰 *Total Price: GHS ${finalPricing.total}.00*\n` +
+          `• Pickup: GHS ${finalPricing.pickup_fee}\n` +
+          `• VIP Bus Transit: GHS ${finalPricing.transit_fee}\n` +
+          `• Final Delivery: GHS ${finalPricing.delivery_fee}\n\n` +
           `Please complete your payment via MTN Mobile Money:\n` +
-          `💵 *Amount:* GHS ${session.draft.quote_total || 130}.00\n` +
+          `💵 *Amount:* GHS ${finalPricing.total}.00\n` +
           `📱 *MoMo Number:* *${settings.momo_number}*\n` +
           `👤 *Account Name:* ${settings.momo_name}\n` +
           `🔑 *MoMo Reference:* *${shipment.tracking_id}*\n\n` +

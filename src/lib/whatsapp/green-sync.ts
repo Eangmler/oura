@@ -34,6 +34,34 @@ function getMsgText(m: { textMessage?: string; extendedTextMessage?: { text?: st
   return (m.textMessage || m.extendedTextMessage?.text || "").trim();
 }
 
+function applySyncedConfigFromOutgoing(sortedOut: GreenOutgoingMsg[]): void {
+  const store = getStore();
+  for (const outMsg of sortedOut) {
+    const text = getMsgText(outMsg);
+    if (!text.includes("RATE_CONFIG_JSON:")) continue;
+    const rateLine = text.match(/RATE_CONFIG_JSON:(\{[^\n]+\})/);
+    if (rateLine?.[1]) {
+      try {
+        const parsedRates = JSON.parse(rateLine[1]);
+        if (parsedRates && parsedRates.accra_kumasi) {
+          store.settings.rates = {
+            ...store.settings.rates,
+            ...parsedRates,
+          };
+        }
+      } catch {}
+    }
+    const momoLine = text.match(/MOMO_JSON:(\{[^\n]+\})/);
+    if (momoLine?.[1]) {
+      try {
+        const parsedMomo = JSON.parse(momoLine[1]);
+        if (parsedMomo.momo_number) store.settings.momo_number = parsedMomo.momo_number;
+        if (parsedMomo.momo_name) store.settings.momo_name = parsedMomo.momo_name;
+      } catch {}
+    }
+  }
+}
+
 function formatReadablePhone(chatId: string, fallbackTextPhone?: string): string {
   if (fallbackTextPhone) return fallbackTextPhone;
   if (chatId.endsWith("@c.us")) {
@@ -166,6 +194,9 @@ export async function syncShipmentsFromGreenApi(force = false): Promise<void> {
     // Sort chronologically (oldest first)
     const sortedIn = [...incoming].sort((a, b) => a.timestamp - b.timestamp);
     const sortedOut = [...outgoing].sort((a, b) => a.timestamp - b.timestamp);
+
+    // Apply any saved Admin Rate Card / MoMo configuration changes from Green-API journal
+    applySyncedConfigFromOutgoing(sortedOut);
 
     for (const msg of sortedIn) {
       if (msg.chatId && (msg.senderName || msg.senderContactName)) {
@@ -405,6 +436,10 @@ export async function restoreSessionFromGreenApi(
     const outgoing: GreenOutgoingMsg[] = await outRes.json();
     if (!Array.isArray(outgoing)) return;
 
+    // Also ensure latest Admin rate card is applied on this serverless container
+    const chronologicalOut = [...outgoing].sort((a, b) => a.timestamp - b.timestamp);
+    applySyncedConfigFromOutgoing(chronologicalOut);
+
     // Normalize phone to match Green-API chatId
     const chatMsgs = outgoing
       .filter((m) => m.chatId === phone || m.chatId.startsWith(phone.replace(/\D/g, "")))
@@ -464,6 +499,9 @@ export async function restoreSessionFromGreenApi(
       session.draft.item_description = parsed.item_description;
       session.draft.weight_kg = parsed.weight_kg;
       session.draft.weight_category = parsed.weight_category;
+      session.draft.pickup_fee = parsed.pricing.pickup_fee;
+      session.draft.transit_fee = parsed.pricing.transit_fee;
+      session.draft.delivery_fee = parsed.pricing.delivery_fee;
       session.draft.quote_total = parsed.pricing.total;
     } else if (latestBotText.includes("Booking Confirmed! ID:")) {
       const idMatch = latestBotText.match(/Booking Confirmed!\s*ID:\s*\*?([HK]\d{7,10})\*?/i);
