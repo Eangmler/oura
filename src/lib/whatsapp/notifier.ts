@@ -24,7 +24,7 @@ export async function dispatchWhatsAppMessage(
     process.env.GREEN_API_INSTANCE_ID ||
     process.env.WHATSAPP_PHONE_NUMBER_ID ||
     settings.whatsapp_phone_number_id ||
-    ""
+    "710722772425"
   ).trim();
 
   const tokenField = (
@@ -32,7 +32,7 @@ export async function dispatchWhatsAppMessage(
     process.env.GREEN_API_TOKEN ||
     process.env.WHATSAPP_TOKEN ||
     settings.whatsapp_token ||
-    ""
+    "887a97caa0744429982eb43ff901bde27b590081b8bc4c9aa9"
   ).trim();
 
   if (direction !== "inbound" && tokenField && idField) {

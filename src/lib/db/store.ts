@@ -6,9 +6,9 @@ export const DEFAULT_SETTINGS: OuraSettings = {
   momo_name: "Ernest Angmler",
   payment_instructions_template:
     "Kindly send GHS {total} via MTN MoMo to {momo_number} ({momo_name}). Use Reference: {tracking_id}. Your parcel will be dispatched as soon as payment is verified.",
-  whatsapp_number: "+233248147952",
-  whatsapp_phone_number_id: "",
-  whatsapp_token: "",
+  whatsapp_number: "+233599882827",
+  whatsapp_phone_number_id: "710722772425",
+  whatsapp_token: "887a97caa0744429982eb43ff901bde27b590081b8bc4c9aa9",
   whatsapp_enabled: true,
   bot_enabled: true,
   pickup_mode: "ernest_manual",
